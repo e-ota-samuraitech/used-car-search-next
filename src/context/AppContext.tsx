@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
-import { carPool } from '@/utils/data';
-import { withinDays, shuffle, computeLiveScore } from '@/utils/helpers';
+import { mockCarDatabase } from '@/lib/mockCars';
+import { computeLiveScore } from '@/utils/helpers';
 import type { Car, Filters, Estimate, SortBy } from '@/types';
 
 interface AppContextType {
@@ -14,7 +14,7 @@ interface AppContextType {
   setResults: (results: Car[]) => void;
   estimate: Estimate | null;
   setEstimate: (estimate: Estimate | null) => void;
-  runSearch: () => void;
+  runSearch: () => Promise<void>;
   findCar: (id: string) => Car | null;
   resetFilters: () => void;
   applySort: (list: Car[]) => Car[];
@@ -51,27 +51,6 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const [results, setResults] = useState<Car[]>([]);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
 
-  // フィルタリングロジック
-  const applyFilters = (list: Car[]): Car[] => {
-    let out = list.slice();
-
-    if (filters.maker) out = out.filter(c => c.maker === filters.maker);
-    if (filters.region) out = out.filter(c => c.region === filters.region);
-    if (filters.pref) out = out.filter(c => c.pref === filters.pref);
-    if (filters.city) out = out.filter(c => c.city === filters.city);
-
-    const min = filters.minMan === '' ? null : Number(filters.minMan) * 10000;
-    const max = filters.maxMan === '' ? null : Number(filters.maxMan) * 10000;
-    if (min !== null) out = out.filter(c => c.priceYen >= min);
-    if (max !== null) out = out.filter(c => c.priceYen <= max);
-
-    if (filters.priceChangedOnly) {
-      out = out.filter(c => c.prevPriceYen !== c.priceYen);
-    }
-
-    return out;
-  };
-
   // ソートロジック
   const applySort = (list: Car[]): Car[] => {
     const out = list.slice();
@@ -87,22 +66,44 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     return out;
   };
 
-  // 検索実行（スタブ）
-  const runSearch = () => {
-    const fresh = carPool.filter(c => withinDays(c.updatedAt, 30));
-    const pickedCount = 2 + Math.floor(Math.random() * 2); // 2 or 3
-    let picked = shuffle(fresh).slice(0, pickedCount);
+  // 検索実行（/api/search を呼び出し）
+  const runSearch = async () => {
+    try {
+      // クエリパラメータを構築
+      const params = new URLSearchParams();
 
-    picked = applyFilters(picked);
-    picked = applySort(picked);
+      if (query) params.append('q', query);
+      if (filters.maker) params.append('maker', filters.maker);
+      if (filters.region) params.append('region', filters.region);
+      if (filters.pref) params.append('pref', filters.pref);
+      if (filters.city) params.append('city', filters.city);
+      if (filters.minMan) params.append('minMan', filters.minMan);
+      if (filters.maxMan) params.append('maxMan', filters.maxMan);
+      if (filters.priceChangedOnly) params.append('priceChangedOnly', 'true');
 
-    setResults(picked);
+      // API呼び出し
+      const response = await fetch(`/api/search?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error('Search API failed');
+      }
+
+      const data = await response.json();
+      const items: Car[] = data.items || [];
+
+      // ソートを適用してから結果をセット
+      const sorted = applySort(items);
+      setResults(sorted);
+    } catch (error) {
+      console.error('Search error:', error);
+      setResults([]);
+    }
   };
 
   // 車両を検索（IDから）
   const findCar = (id: string): Car | null => {
     const inResults = results.find(c => c.id === id);
-    return inResults || carPool.find(c => c.id === id) || null;
+    return inResults || mockCarDatabase.find(c => c.id === id) || null;
   };
 
   // フィルタをリセット
