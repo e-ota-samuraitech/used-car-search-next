@@ -1,3 +1,4 @@
+// src\pages\api\search.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { mockCarDatabase } from '@/lib/mockCars';
 import type { Car } from '@/types';
