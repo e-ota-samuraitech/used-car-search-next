@@ -12,7 +12,7 @@ const Layout = ({ children, showFilters = true }: LayoutProps) => {
   return (
     <div className="flex flex-col min-h-screen">
       <Topbar />
-      <div className="max-w-[1200px] mx-auto p-3.5 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3.5 w-full flex-1 min-h-[calc(100vh-120px)]">
+      <div className={`max-w-[1200px] mx-auto p-3.5 w-full flex-1 min-h-[calc(100vh-120px)] ${showFilters ? 'grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3.5' : ''}`}>
         {children}
         {showFilters && <Filters />}
       </div>

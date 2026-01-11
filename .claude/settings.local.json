@@ -3,7 +3,16 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(npm run build:*)",
-      "Bash(npm run dev)"
+      "Bash(npm run dev)",
+      "Bash(npm run lint)",
+      "Bash(curl:*)",
+      "Bash(powershell -Command \"\\(Invoke-WebRequest -Uri ''http://localhost:3000/api/search?maker=トヨタ''\\).Content\")",
+      "Bash(powershell -Command \"\\(Invoke-WebRequest -Uri ''http://localhost:3001/api/search''\\).Content | ConvertFrom-Json | Select-Object -ExpandProperty items | Select-Object -First 3 | ConvertTo-Json\")",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri 'http://localhost:3001/api/search' | Select-Object -ExpandProperty items | Select-Object -First 2 | Format-List\":*)",
+      "Bash(powershell.exe -Command \"Invoke-RestMethod -Uri ''http://localhost:3001/api/search?priceChangedOnly=true'' | Select-Object -ExpandProperty items | Measure-Object | Select-Object -ExpandProperty Count\")",
+      "Bash(powershell.exe -Command \"Invoke-RestMethod -Uri ''http://localhost:3001/api/search?minMan=200&maxMan=300'' | Select-Object -ExpandProperty items | Measure-Object | Select-Object -ExpandProperty Count\")",
+      "Bash(timeout:*)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }
