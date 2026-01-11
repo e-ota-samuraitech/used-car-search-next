@@ -3,6 +3,11 @@ export interface Car {
   maker: string;
   model: string;
   year: number;
+  mileage: number; // 走行距離 (km)
+  hasRepairHistory: boolean; // 修復歴
+  hasInspection: boolean; // 法定整備
+  shaken: string; // 車検有無 (例: "車検整備付", "2025年3月", "なし")
+  warranty: string; // 保証 (例: "付き / 3ヵ月 / 3,000km", "なし")
   region: string;
   pref: string;
   city: string;

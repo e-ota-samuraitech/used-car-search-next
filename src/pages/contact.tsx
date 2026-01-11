@@ -1,10 +1,7 @@
-import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '@/components/common/Layout';
 
 export default function ContactPage() {
-  const router = useRouter();
-
   return (
     <Layout>
       <main>
@@ -26,22 +23,6 @@ export default function ContactPage() {
                   <div className="text-muted">受付時間</div>
                   <div>平日 10:00 - 18:00</div>
                 </div>
-              </div>
-
-              <div className="mt-3 flex gap-2 flex-wrap items-center">
-                <button 
-                  className="inline-flex items-center justify-center gap-2 text-xs h-[34px] px-3 rounded-full border border-gray-200 bg-white cursor-pointer whitespace-nowrap"
-                  onClick={() => router.back()} 
-                  type="button"
-                >
-                  戻る
-                </button>
-                <Link 
-                  className="inline-flex items-center justify-center gap-2 text-xs h-[34px] px-3 rounded-full border-0 bg-accent text-white cursor-pointer whitespace-nowrap font-extrabold"
-                  href="/"
-                >
-                  トップへ
-                </Link>
               </div>
             </div>
           </div>

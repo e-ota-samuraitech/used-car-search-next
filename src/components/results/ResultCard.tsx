@@ -57,6 +57,13 @@ const ResultCard = ({ car }: ResultCardProps) => {
             📍 {car.region}｜{car.pref} {car.city}｜更新 {formatAgo(car.updatedAt)}
           </div>
         </div>
+        <div className="mt-1.5 flex gap-x-3 gap-y-1 flex-wrap text-xs text-muted">
+          <span>{(car.mileage / 10000).toFixed(1)}万km</span>
+          <span>修復歴: {car.hasRepairHistory ? 'あり' : 'なし'}</span>
+          <span>整備: {car.hasInspection ? '付き' : 'なし'}</span>
+          <span>車検: {car.shaken}</span>
+          <span>保証: {car.warranty}</span>
+        </div>
         <div className="mt-2 flex gap-2 flex-wrap items-center">
           <button
             className="inline-flex items-center justify-center gap-2 text-xs h-[34px] px-3 rounded-full border-0 bg-accent text-white cursor-pointer whitespace-nowrap font-extrabold"

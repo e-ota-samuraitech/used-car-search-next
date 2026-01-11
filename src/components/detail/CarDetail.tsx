@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { yen, formatAgo } from '@/utils/helpers';
 import type { Car } from '@/types';
 
@@ -51,6 +52,26 @@ const CarDetail = ({ car }: CarDetailProps) => {
           </div>
 
           <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
+            <div className="text-muted">走行距離</div>
+            <div>{(car.mileage / 10000).toFixed(1)}万km</div>
+          </div>
+          <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
+            <div className="text-muted">修復歴</div>
+            <div>{car.hasRepairHistory ? 'あり' : 'なし'}</div>
+          </div>
+          <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
+            <div className="text-muted">法定整備</div>
+            <div>{car.hasInspection ? '付き' : 'なし'}</div>
+          </div>
+          <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
+            <div className="text-muted">車検有無</div>
+            <div>{car.shaken}</div>
+          </div>
+          <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
+            <div className="text-muted">保証</div>
+            <div>{car.warranty}</div>
+          </div>
+          <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
             <div className="text-muted">地域</div>
             <div>{car.region}</div>
           </div>
@@ -64,7 +85,14 @@ const CarDetail = ({ car }: CarDetailProps) => {
           </div>
           <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5">
             <div className="text-muted">店舗</div>
-            <div>{car.shop}</div>
+            <div>
+              <Link
+                href={`/shop/${encodeURIComponent(car.shop)}`}
+                className="underline underline-offset-2 hover:text-accent"
+              >
+                {car.shop}
+              </Link>
+            </div>
           </div>
 
           <div className="mt-3 flex gap-2 flex-wrap items-center">
