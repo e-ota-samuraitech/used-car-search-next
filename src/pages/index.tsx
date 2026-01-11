@@ -5,7 +5,7 @@ import SearchLogo from '@/components/common/SearchLogo';
 export default function TopPage() {
   return (
     <Layout showFilters={false}>
-      <main className="flex-1 flex items-center justify-center">
+      <main className="flex-1 flex items-center justify-center" style={{ paddingTop: '10vh' }}>
         <div className="w-full max-w-[680px] px-4 py-8">
           <SearchLogo />
           <SearchBar variant="large" />

@@ -12,7 +12,7 @@ export default function EstimatePage() {
   const car = typeof id === 'string' ? findCar(id) : null;
 
   return (
-    <Layout>
+    <Layout showFilters={false}>
       <main>
         <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
           <div className="text-xs text-muted px-3 pt-2.5">

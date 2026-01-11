@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { yen, formatAgo } from '@/utils/helpers';
 import type { Car } from '@/types';
 
@@ -64,7 +65,16 @@ const ResultCard = ({ car }: ResultCardProps) => {
           >
             今すぐ見積もり
           </button>
-          <span className="text-xs text-muted">店舗：{car.shop}</span>
+          <span className="text-xs text-muted">
+            店舗：
+            <Link
+              href={`/shop/${encodeURIComponent(car.shop)}`}
+              className="underline underline-offset-2 hover:text-accent"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {car.shop}
+            </Link>
+          </span>
         </div>
       </div>
     </div>

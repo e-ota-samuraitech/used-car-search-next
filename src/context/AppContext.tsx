@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { mockCarDatabase } from '@/lib/mockCars';
+import { findShopByName as findShopByNameLib } from '@/lib/mockShops';
 import { computeLiveScore } from '@/utils/helpers';
-import type { Car, Filters, Estimate, SortBy } from '@/types';
+import type { Car, Filters, Estimate, SortBy, Shop } from '@/types';
 
 interface AppContextType {
   query: string;
@@ -16,6 +17,8 @@ interface AppContextType {
   setEstimate: (estimate: Estimate | null) => void;
   runSearch: () => Promise<void>;
   findCar: (id: string) => Car | null;
+  findCarsByShop: (shopName: string) => Car[];
+  findShopByName: (shopName: string) => Shop | null;
   resetFilters: () => void;
   applySort: (list: Car[]) => Car[];
 }
@@ -47,7 +50,7 @@ interface AppProviderProps {
 export const AppProvider = ({ children }: AppProviderProps) => {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Filters>(defaultFilters);
-  const [sortBy, setSortBy] = useState<SortBy>('live');
+  const [sortBy, setSortBy] = useState<SortBy>('updated_desc');
   const [results, setResults] = useState<Car[]>([]);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
 
@@ -106,6 +109,16 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     return inResults || mockCarDatabase.find(c => c.id === id) || null;
   };
 
+  // 店舗名から車両を検索
+  const findCarsByShop = (shopName: string): Car[] => {
+    return mockCarDatabase.filter(car => car.shop === shopName);
+  };
+
+  // 店舗名から店舗情報を取得
+  const findShopByName = (shopName: string): Shop | null => {
+    return findShopByNameLib(shopName);
+  };
+
   // フィルタをリセット
   const resetFilters = () => {
     setFilters(defaultFilters);
@@ -124,6 +137,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     setEstimate,
     runSearch,
     findCar,
+    findCarsByShop,
+    findShopByName,
     resetFilters,
     applySort,
   };

@@ -8,7 +8,7 @@ interface LayoutProps {
   showFilters?: boolean;
 }
 
-const Layout = ({ children, showFilters = true }: LayoutProps) => {
+const Layout = ({ children, showFilters = false }: LayoutProps) => {
   return (
     <div className="flex flex-col min-h-screen">
       <Topbar />

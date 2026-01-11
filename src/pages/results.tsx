@@ -4,13 +4,12 @@ import Layout from '@/components/common/Layout';
 import SearchBar from '@/components/results/SearchBar';
 import ResultsList from '@/components/results/ResultsList';
 import Filters from '@/components/filters/Filters';
-import FilterToggleButton from '@/components/results/FilterToggleButton';
 import { useApp } from '@/context/AppContext';
 import type { SortBy } from '@/types';
 
 export default function ResultsPage() {
   const { results, sortBy, setSortBy, runSearch, applySort, setResults } = useApp();
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -33,11 +32,42 @@ export default function ResultsPage() {
     <Layout showFilters={false}>
       <div className="w-full">
         {/* ページ上部の検索バー */}
-        <div className="mb-4 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden p-3">
+        <div className="mb-3 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden p-3">
           <div className="text-xs text-muted mb-2">
             <Link href="/" className="underline underline-offset-2">トップ</Link> / 検索結果
           </div>
           <SearchBar onSearch={handleSearch} variant="compact" />
+        </div>
+
+        {/* スマホ版：絞り込み欄（折りたたみ式） */}
+        <div className="mb-3 lg:hidden">
+          <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
+            <button
+              onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+              className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              type="button"
+            >
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span className="text-sm font-medium">絞り込み検索</span>
+              </div>
+              <svg
+                className={`w-5 h-5 transition-transform ${isMobileFilterOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {isMobileFilterOpen && (
+              <div className="border-t border-gray-200">
+                <Filters isOpen={true} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* メインコンテンツエリア */}
@@ -45,13 +75,9 @@ export default function ResultsPage() {
           {/* 左側：検索結果 */}
           <main>
             <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
-              {/* ツールバー：絞り込みボタン（スマホ）とソート */}
+              {/* ツールバー：PC版の絞り込み開閉ボタンとソート */}
               <div className="flex items-center justify-between gap-2.5 px-3 py-2.5 border-b border-gray-200 bg-white flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <FilterToggleButton
-                    onClick={() => setIsFilterModalOpen(true)}
-                    isOpen={isFilterModalOpen}
-                  />
                   {/* PC版の絞り込み開閉ボタン */}
                   <button
                     onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
@@ -97,16 +123,10 @@ export default function ResultsPage() {
           </main>
 
           {/* 右側：絞り込みフィルター（PC版サイドバー） */}
-          <Filters isOpen={isFilterSidebarOpen} />
+          <aside className="hidden lg:block">
+            <Filters isOpen={isFilterSidebarOpen} />
+          </aside>
         </div>
-
-        {/* モーダル版フィルター（スマホ用） */}
-        {isFilterModalOpen && (
-          <Filters
-            isModalMode={true}
-            onClose={() => setIsFilterModalOpen(false)}
-          />
-        )}
       </div>
     </Layout>
   );

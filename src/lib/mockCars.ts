@@ -21,7 +21,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 12 * 60 * 1000,
     postedAt: now - 8 * DAY,
     priceChangedAt: now - 3 * 60 * 60 * 1000,
-    shop: "○○モータース"
+    shop: "カーセレクト東京ベイ"
   },
   {
     id: "c2",
@@ -51,7 +51,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 2 * 60 * 60 * 1000,
     postedAt: now - 5 * DAY,
     priceChangedAt: now - 1 * DAY,
-    shop: "横浜カーセレクト"
+    shop: "横浜プレミアムカーズ"
   },
   {
     id: "c4",
@@ -66,7 +66,52 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 1 * DAY,
     postedAt: now - 7 * DAY,
     priceChangedAt: null,
-    shop: "大阪プレミアムカー"
+    shop: "大阪高級車専門店"
+  },
+  {
+    id: "c21",
+    maker: "トヨタ",
+    model: "ヤリス ハイブリッド",
+    year: 2022,
+    region: "関東",
+    pref: "東京都",
+    city: "渋谷区",
+    priceYen: 1650000,
+    prevPriceYen: 1700000,
+    updatedAt: now - 3 * 60 * 60 * 1000,
+    postedAt: now - 4 * DAY,
+    priceChangedAt: now - 18 * 60 * 60 * 1000,
+    shop: "カーセレクト東京ベイ"
+  },
+  {
+    id: "c22",
+    maker: "トヨタ",
+    model: "RAV4 アドベンチャー",
+    year: 2021,
+    region: "中部",
+    pref: "愛知県",
+    city: "名古屋市",
+    priceYen: 3580000,
+    prevPriceYen: 3680000,
+    updatedAt: now - 8 * 60 * 60 * 1000,
+    postedAt: now - 6 * DAY,
+    priceChangedAt: now - 2 * DAY,
+    shop: "名古屋オートギャラリー"
+  },
+  {
+    id: "c23",
+    maker: "トヨタ",
+    model: "カローラツーリング ハイブリッド",
+    year: 2020,
+    region: "九州",
+    pref: "福岡県",
+    city: "福岡市",
+    priceYen: 1980000,
+    prevPriceYen: 1980000,
+    updatedAt: now - 5 * 60 * 60 * 1000,
+    postedAt: now - 10 * DAY,
+    priceChangedAt: null,
+    shop: "福岡カーライフステーション"
   },
 
   // ホンダ車
@@ -83,7 +128,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 40 * 60 * 1000,
     postedAt: now - 2 * DAY,
     priceChangedAt: null,
-    shop: "カーショップA"
+    shop: "大阪軽自動車センター"
   },
   {
     id: "c6",
@@ -98,7 +143,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 3 * 60 * 60 * 1000,
     postedAt: now - 10 * DAY,
     priceChangedAt: now - 2 * DAY,
-    shop: "名古屋オートモール"
+    shop: "名古屋オートギャラリー"
   },
   {
     id: "c7",
@@ -113,7 +158,52 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 6 * 60 * 60 * 1000,
     postedAt: now - 4 * DAY,
     priceChangedAt: now - 3 * DAY,
-    shop: "埼玉カーステーション"
+    shop: "埼玉カーステーション大宮"
+  },
+  {
+    id: "c24",
+    maker: "ホンダ",
+    model: "フリード ハイブリッド",
+    year: 2020,
+    region: "関東",
+    pref: "千葉県",
+    city: "船橋市",
+    priceYen: 2180000,
+    prevPriceYen: 2250000,
+    updatedAt: now - 4 * 60 * 60 * 1000,
+    postedAt: now - 7 * DAY,
+    priceChangedAt: now - 1 * DAY,
+    shop: "千葉カーセンター"
+  },
+  {
+    id: "c25",
+    maker: "ホンダ",
+    model: "ステップワゴン e:HEV",
+    year: 2023,
+    region: "関西",
+    pref: "兵庫県",
+    city: "神戸市",
+    priceYen: 3380000,
+    prevPriceYen: 3380000,
+    updatedAt: now - 2 * 60 * 60 * 1000,
+    postedAt: now - 3 * DAY,
+    priceChangedAt: null,
+    shop: "神戸ファミリーカー"
+  },
+  {
+    id: "c26",
+    maker: "ホンダ",
+    model: "シビック Type R",
+    year: 2019,
+    region: "関東",
+    pref: "神奈川県",
+    city: "横浜市",
+    priceYen: 4580000,
+    prevPriceYen: 4680000,
+    updatedAt: now - 9 * 60 * 60 * 1000,
+    postedAt: now - 8 * DAY,
+    priceChangedAt: now - 4 * DAY,
+    shop: "横浜プレミアムカーズ"
   },
 
   // 日産車
@@ -130,7 +220,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 2 * 60 * 60 * 1000,
     postedAt: now - 15 * DAY,
     priceChangedAt: now - 20 * 60 * 60 * 1000,
-    shop: "クルマ館"
+    shop: "名古屋オートギャラリー"
   },
   {
     id: "c9",
@@ -145,7 +235,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 1 * 60 * 60 * 1000,
     postedAt: now - 6 * DAY,
     priceChangedAt: now - 12 * 60 * 60 * 1000,
-    shop: "東京ファミリーカー"
+    shop: "東京ファミリーカー専門館"
   },
   {
     id: "c10",
@@ -160,7 +250,37 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 8 * 60 * 60 * 1000,
     postedAt: now - 9 * DAY,
     priceChangedAt: null,
-    shop: "福岡SUV専門店"
+    shop: "福岡SUV専門館"
+  },
+  {
+    id: "c27",
+    maker: "日産",
+    model: "リーフ",
+    year: 2021,
+    region: "関東",
+    pref: "東京都",
+    city: "港区",
+    priceYen: 2380000,
+    prevPriceYen: 2480000,
+    updatedAt: now - 5 * 60 * 60 * 1000,
+    postedAt: now - 5 * DAY,
+    priceChangedAt: now - 2 * DAY,
+    shop: "カーセレクト東京ベイ"
+  },
+  {
+    id: "c28",
+    maker: "日産",
+    model: "キックス e-POWER",
+    year: 2022,
+    region: "関西",
+    pref: "京都府",
+    city: "京都市",
+    priceYen: 2580000,
+    prevPriceYen: 2580000,
+    updatedAt: now - 7 * 60 * 60 * 1000,
+    postedAt: now - 11 * DAY,
+    priceChangedAt: null,
+    shop: "京都プレミアムオート"
   },
 
   // スズキ車
@@ -177,7 +297,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 25 * 60 * 1000,
     postedAt: now - 6 * DAY,
     priceChangedAt: now - 90 * 60 * 1000,
-    shop: "九州オート"
+    shop: "福岡カーライフステーション"
   },
   {
     id: "c12",
@@ -192,7 +312,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 4 * DAY,
     postedAt: now - 11 * DAY,
     priceChangedAt: null,
-    shop: "神戸軽自動車専門"
+    shop: "神戸ファミリーカー"
   },
   {
     id: "c13",
@@ -209,6 +329,36 @@ export const mockCarDatabase: Car[] = [
     priceChangedAt: now - 5 * DAY,
     shop: "浜松カーライフ"
   },
+  {
+    id: "c29",
+    maker: "スズキ",
+    model: "ワゴンR スティングレー",
+    year: 2021,
+    region: "関西",
+    pref: "大阪府",
+    city: "堺市",
+    priceYen: 1180000,
+    prevPriceYen: 1250000,
+    updatedAt: now - 6 * 60 * 60 * 1000,
+    postedAt: now - 9 * DAY,
+    priceChangedAt: now - 3 * DAY,
+    shop: "大阪軽自動車センター"
+  },
+  {
+    id: "c30",
+    maker: "スズキ",
+    model: "アルト ラパン",
+    year: 2022,
+    region: "九州",
+    pref: "熊本県",
+    city: "熊本市",
+    priceYen: 1250000,
+    prevPriceYen: 1250000,
+    updatedAt: now - 3 * 60 * 60 * 1000,
+    postedAt: now - 5 * DAY,
+    priceChangedAt: null,
+    shop: "熊本カーステーション"
+  },
 
   // マツダ車
   {
@@ -224,7 +374,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 3 * DAY,
     postedAt: now - 28 * DAY,
     priceChangedAt: null,
-    shop: "横浜カーセレクト"
+    shop: "横浜プレミアムカーズ"
   },
   {
     id: "c15",
@@ -256,6 +406,36 @@ export const mockCarDatabase: Car[] = [
     priceChangedAt: null,
     shop: "豊田カーセンター"
   },
+  {
+    id: "c31",
+    maker: "マツダ",
+    model: "CX-30",
+    year: 2022,
+    region: "関東",
+    pref: "埼玉県",
+    city: "さいたま市",
+    priceYen: 2680000,
+    prevPriceYen: 2750000,
+    updatedAt: now - 4 * 60 * 60 * 1000,
+    postedAt: now - 6 * DAY,
+    priceChangedAt: now - 1 * DAY,
+    shop: "埼玉カーステーション大宮"
+  },
+  {
+    id: "c32",
+    maker: "マツダ",
+    model: "ロードスター S",
+    year: 2019,
+    region: "関西",
+    pref: "大阪府",
+    city: "大阪市",
+    priceYen: 2380000,
+    prevPriceYen: 2380000,
+    updatedAt: now - 8 * 60 * 60 * 1000,
+    postedAt: now - 12 * DAY,
+    priceChangedAt: null,
+    shop: "大阪スポーツカー専門"
+  },
 
   // ダイハツ車
   {
@@ -271,7 +451,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 5 * 60 * 60 * 1000,
     postedAt: now - 7 * DAY,
     priceChangedAt: now - 1 * DAY,
-    shop: "船橋軽カー専門"
+    shop: "千葉カーセンター"
   },
   {
     id: "c18",
@@ -286,7 +466,37 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 6 * DAY,
     postedAt: now - 13 * DAY,
     priceChangedAt: null,
-    shop: "熊本カーライフ"
+    shop: "熊本カーステーション"
+  },
+  {
+    id: "c33",
+    maker: "ダイハツ",
+    model: "ムーヴ カスタム",
+    year: 2021,
+    region: "関西",
+    pref: "大阪府",
+    city: "大阪市",
+    priceYen: 1280000,
+    prevPriceYen: 1350000,
+    updatedAt: now - 7 * 60 * 60 * 1000,
+    postedAt: now - 10 * DAY,
+    priceChangedAt: now - 4 * DAY,
+    shop: "大阪軽自動車センター"
+  },
+  {
+    id: "c34",
+    maker: "ダイハツ",
+    model: "ロッキー プレミアム",
+    year: 2022,
+    region: "中部",
+    pref: "静岡県",
+    city: "浜松市",
+    priceYen: 1880000,
+    prevPriceYen: 1880000,
+    updatedAt: now - 5 * 60 * 60 * 1000,
+    postedAt: now - 7 * DAY,
+    priceChangedAt: null,
+    shop: "浜松カーライフ"
   },
 
   // スバル車
@@ -303,7 +513,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 4 * 60 * 60 * 1000,
     postedAt: now - 5 * DAY,
     priceChangedAt: now - 2 * DAY,
-    shop: "仙台4WD専門"
+    shop: "仙台4WD専門館"
   },
   {
     id: "c20",
@@ -318,10 +528,256 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 7 * DAY,
     postedAt: now - 20 * DAY,
     priceChangedAt: null,
-    shop: "新宿カーステーション"
+    shop: "東京ファミリーカー専門館"
+  },
+  {
+    id: "c35",
+    maker: "スバル",
+    model: "XV アドバンス",
+    year: 2021,
+    region: "東北",
+    pref: "宮城県",
+    city: "仙台市",
+    priceYen: 2480000,
+    prevPriceYen: 2580000,
+    updatedAt: now - 6 * 60 * 60 * 1000,
+    postedAt: now - 8 * DAY,
+    priceChangedAt: now - 3 * DAY,
+    shop: "仙台4WD専門館"
+  },
+  {
+    id: "c36",
+    maker: "スバル",
+    model: "レヴォーグ STI Sport",
+    year: 2020,
+    region: "関東",
+    pref: "神奈川県",
+    city: "横浜市",
+    priceYen: 3180000,
+    prevPriceYen: 3180000,
+    updatedAt: now - 9 * 60 * 60 * 1000,
+    postedAt: now - 14 * DAY,
+    priceChangedAt: null,
+    shop: "横浜プレミアムカーズ"
   },
 
-  // 古いデータ（30日以上前）
+  // 三菱車
+  {
+    id: "c37",
+    maker: "三菱",
+    model: "デリカ D:5",
+    year: 2020,
+    region: "東北",
+    pref: "宮城県",
+    city: "仙台市",
+    priceYen: 2980000,
+    prevPriceYen: 3080000,
+    updatedAt: now - 10 * 60 * 60 * 1000,
+    postedAt: now - 11 * DAY,
+    priceChangedAt: now - 5 * DAY,
+    shop: "仙台4WD専門館"
+  },
+  {
+    id: "c38",
+    maker: "三菱",
+    model: "eKワゴン",
+    year: 2021,
+    region: "九州",
+    pref: "福岡県",
+    city: "福岡市",
+    priceYen: 980000,
+    prevPriceYen: 980000,
+    updatedAt: now - 5 * 60 * 60 * 1000,
+    postedAt: now - 9 * DAY,
+    priceChangedAt: null,
+    shop: "福岡カーライフステーション"
+  },
+  {
+    id: "c39",
+    maker: "三菱",
+    model: "アウトランダーPHEV",
+    year: 2022,
+    region: "関東",
+    pref: "東京都",
+    city: "港区",
+    priceYen: 4280000,
+    prevPriceYen: 4380000,
+    updatedAt: now - 3 * 60 * 60 * 1000,
+    postedAt: now - 4 * DAY,
+    priceChangedAt: now - 1 * DAY,
+    shop: "カーセレクト東京ベイ"
+  },
+
+  // レクサス車
+  {
+    id: "c40",
+    maker: "レクサス",
+    model: "NX300h",
+    year: 2019,
+    region: "関東",
+    pref: "東京都",
+    city: "港区",
+    priceYen: 4580000,
+    prevPriceYen: 4580000,
+    updatedAt: now - 2 * DAY,
+    postedAt: now - 15 * DAY,
+    priceChangedAt: null,
+    shop: "東京プレミアムカーセレクト"
+  },
+  {
+    id: "c41",
+    maker: "レクサス",
+    model: "RX450h",
+    year: 2020,
+    region: "関西",
+    pref: "大阪府",
+    city: "大阪市",
+    priceYen: 5680000,
+    prevPriceYen: 5880000,
+    updatedAt: now - 4 * 60 * 60 * 1000,
+    postedAt: now - 6 * DAY,
+    priceChangedAt: now - 2 * DAY,
+    shop: "大阪高級車専門店"
+  },
+  {
+    id: "c42",
+    maker: "レクサス",
+    model: "CT200h",
+    year: 2018,
+    region: "関東",
+    pref: "神奈川県",
+    city: "横浜市",
+    priceYen: 2380000,
+    prevPriceYen: 2480000,
+    updatedAt: now - 8 * 60 * 60 * 1000,
+    postedAt: now - 12 * DAY,
+    priceChangedAt: now - 6 * DAY,
+    shop: "横浜プレミアムカーズ"
+  },
+
+  // 輸入車
+  {
+    id: "c43",
+    maker: "メルセデス・ベンツ",
+    model: "Cクラス C200",
+    year: 2019,
+    region: "関東",
+    pref: "東京都",
+    city: "港区",
+    priceYen: 3280000,
+    prevPriceYen: 3380000,
+    updatedAt: now - 5 * 60 * 60 * 1000,
+    postedAt: now - 10 * DAY,
+    priceChangedAt: now - 3 * DAY,
+    shop: "東京プレミアムカーセレクト"
+  },
+  {
+    id: "c44",
+    maker: "BMW",
+    model: "3シリーズ 320i",
+    year: 2020,
+    region: "関西",
+    pref: "大阪府",
+    city: "大阪市",
+    priceYen: 3580000,
+    prevPriceYen: 3580000,
+    updatedAt: now - 6 * 60 * 60 * 1000,
+    postedAt: now - 13 * DAY,
+    priceChangedAt: null,
+    shop: "大阪高級車専門店"
+  },
+  {
+    id: "c45",
+    maker: "フォルクスワーゲン",
+    model: "ゴルフ TSI",
+    year: 2021,
+    region: "関東",
+    pref: "神奈川県",
+    city: "横浜市",
+    priceYen: 2180000,
+    prevPriceYen: 2280000,
+    updatedAt: now - 7 * 60 * 60 * 1000,
+    postedAt: now - 9 * DAY,
+    priceChangedAt: now - 4 * DAY,
+    shop: "横浜プレミアムカーズ"
+  },
+  {
+    id: "c46",
+    maker: "アウディ",
+    model: "A4 35TFSI",
+    year: 2020,
+    region: "中部",
+    pref: "愛知県",
+    city: "名古屋市",
+    priceYen: 3480000,
+    prevPriceYen: 3480000,
+    updatedAt: now - 9 * 60 * 60 * 1000,
+    postedAt: now - 16 * DAY,
+    priceChangedAt: null,
+    shop: "名古屋インポートカー"
+  },
+  {
+    id: "c47",
+    maker: "ボルボ",
+    model: "XC60 T5",
+    year: 2019,
+    region: "関東",
+    pref: "東京都",
+    city: "世田谷区",
+    priceYen: 3880000,
+    prevPriceYen: 3980000,
+    updatedAt: now - 11 * 60 * 60 * 1000,
+    postedAt: now - 14 * DAY,
+    priceChangedAt: now - 7 * DAY,
+    shop: "東京ファミリーカー専門館"
+  },
+  {
+    id: "c48",
+    maker: "MINI",
+    model: "MINI クーパー",
+    year: 2021,
+    region: "関西",
+    pref: "京都府",
+    city: "京都市",
+    priceYen: 2580000,
+    prevPriceYen: 2680000,
+    updatedAt: now - 4 * 60 * 60 * 1000,
+    postedAt: now - 8 * DAY,
+    priceChangedAt: now - 2 * DAY,
+    shop: "京都プレミアムオート"
+  },
+  {
+    id: "c49",
+    maker: "ジープ",
+    model: "ラングラー アンリミテッド",
+    year: 2020,
+    region: "九州",
+    pref: "福岡県",
+    city: "福岡市",
+    priceYen: 4680000,
+    prevPriceYen: 4680000,
+    updatedAt: now - 12 * 60 * 60 * 1000,
+    postedAt: now - 17 * DAY,
+    priceChangedAt: null,
+    shop: "福岡SUV専門館"
+  },
+  {
+    id: "c50",
+    maker: "プジョー",
+    model: "308 アリュール",
+    year: 2021,
+    region: "関東",
+    pref: "東京都",
+    city: "港区",
+    priceYen: 2280000,
+    prevPriceYen: 2380000,
+    updatedAt: now - 13 * 60 * 60 * 1000,
+    postedAt: now - 11 * DAY,
+    priceChangedAt: now - 5 * DAY,
+    shop: "東京プレミアムカーセレクト"
+  },
+
+  // 古いデータ（30日以上前）- フィルタリングでテスト用
   {
     id: "c_old_1",
     maker: "トヨタ",
@@ -335,7 +791,7 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 31 * DAY,
     postedAt: now - 40 * DAY,
     priceChangedAt: now - 35 * DAY,
-    shop: "古いデータ屋"
+    shop: "千葉中古車マート"
   },
   {
     id: "c_old_2",
@@ -350,6 +806,6 @@ export const mockCarDatabase: Car[] = [
     updatedAt: now - 45 * DAY,
     postedAt: now - 60 * DAY,
     priceChangedAt: null,
-    shop: "旧車センター"
+    shop: "堺カーセンター"
   }
 ];

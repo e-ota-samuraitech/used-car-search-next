@@ -35,3 +35,11 @@ export interface Estimate {
 }
 
 export type SortBy = 'live' | 'updated_desc' | 'price_asc' | 'price_desc';
+
+export interface Shop {
+  name: string;
+  address: string;
+  tel: string;
+  hours: string;
+  description: string;
+}
