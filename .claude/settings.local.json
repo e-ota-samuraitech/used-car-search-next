@@ -12,7 +12,9 @@
       "Bash(powershell.exe -Command \"Invoke-RestMethod -Uri ''http://localhost:3001/api/search?priceChangedOnly=true'' | Select-Object -ExpandProperty items | Measure-Object | Select-Object -ExpandProperty Count\")",
       "Bash(powershell.exe -Command \"Invoke-RestMethod -Uri ''http://localhost:3001/api/search?minMan=200&maxMan=300'' | Select-Object -ExpandProperty items | Measure-Object | Select-Object -ExpandProperty Count\")",
       "Bash(timeout:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(npm ci:*)",
+      "Bash(npm install)"
     ]
   }
 }
