@@ -1,16 +1,30 @@
 import { useEffect, ChangeEvent, useState } from 'react';
 import Link from 'next/link';
 import Layout from '@/components/common/Layout';
+import { SeoHead } from '@/components/seo/SeoHead';
 import SearchBar from '@/components/results/SearchBar';
 import ResultsList from '@/components/results/ResultsList';
 import Filters from '@/components/filters/Filters';
 import { useApp } from '@/context/AppContext';
 import type { SortBy } from '@/types';
+import type { AbsoluteUrl, Pathname } from '@/seo';
+import { joinAbsoluteUrl } from '@/seo';
+
+const RESULTS_PATH = '/results' as Pathname;
+
+function getResultsCanonicalUrl(): string | undefined {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!raw) return undefined;
+  if (!raw.startsWith('http://') && !raw.startsWith('https://')) return undefined;
+  return joinAbsoluteUrl(raw as AbsoluteUrl, RESULTS_PATH);
+}
 
 export default function ResultsPage() {
   const { results, sortBy, setSortBy, runSearch, applySort, setResults } = useApp();
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
+
+  const canonicalUrl = getResultsCanonicalUrl();
 
   useEffect(() => {
     if (results.length === 0) {
@@ -29,8 +43,10 @@ export default function ResultsPage() {
   };
 
   return (
-    <Layout showFilters={false}>
-      <div className="w-full">
+    <>
+      <SeoHead robots="noindex,follow" canonicalUrl={canonicalUrl} />
+      <Layout showFilters={false}>
+        <div className="w-full">
         {/* ページ上部の検索バー */}
         <div className="mb-3 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden p-3">
           <div className="text-xs text-muted mb-2">
@@ -127,7 +143,8 @@ export default function ResultsPage() {
             <Filters isOpen={isFilterSidebarOpen} />
           </aside>
         </div>
-      </div>
-    </Layout>
+        </div>
+      </Layout>
+    </>
   );
 }
