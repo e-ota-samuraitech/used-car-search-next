@@ -32,6 +32,23 @@ import {
 import { executeSearchFromParsedUrl } from '@/lib/search';
 import { MockCarDataSource } from '@/server/search/dataSource/mockDataSource';
 
+function shouldEmitSeoDebugHeaders(): boolean {
+  return process.env.NODE_ENV !== 'production' || process.env.SEO_DEBUG === '1';
+}
+
+function setSeoDebugHeaders(
+  res: Parameters<GetServerSideProps>[0]['res'],
+  seo: SeoResult
+): void {
+  if (!shouldEmitSeoDebugHeaders()) return;
+  res.setHeader('x-seo-robots', seo.robots);
+  res.setHeader('x-seo-reason', seo.reasonPrimary);
+  const joined = seo.reasonTrace.join('|');
+  const maxLen = 900;
+  const value = joined.length > maxLen ? `${joined.slice(0, maxLen - 3)}...` : joined;
+  res.setHeader('x-seo-trace', value);
+}
+
 interface CatchAllCarsPageProps {
   seo: SeoResult;
   cars: Car[];
@@ -120,7 +137,7 @@ function isValidCarsSegments(segments: string[]): boolean {
 }
 
 export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = async (context) => {
-  const { req, query, params } = context;
+  const { req, res, query, params } = context;
 
   const segments = asArray(params?.segments as SegmentsParam);
 
@@ -170,6 +187,8 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
         }
       );
 
+      setSeoDebugHeaders(res, seoResult);
+
       return {
         props: {
           seo: seoResult,
@@ -198,6 +217,8 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
         },
       };
     }
+
+    setSeoDebugHeaders(res, seoResult);
 
     return {
       props: {

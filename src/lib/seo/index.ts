@@ -3,7 +3,7 @@
  * 中古車検索サイト SEO仕様書 Ver.1.1 準拠
  */
 
-import type { SeoRequestContext, SeoResult, RobotsMetaContent, AbsoluteUrl } from './types';
+import type { SeoRequestContext, SeoResult, RobotsMetaContent, AbsoluteUrl, SeoReasonCode } from './types';
 import type { SeoStoreRegistry } from './stores';
 import { getBaseUrl, isValidBaseUrl, inferScope, getMinIndexCount, getIndexOnThreshold, getIndexOffThreshold, isFeatureWhitelisted } from './config';
 import { parseUrl, buildCanonicalPath, buildAbsoluteUrl, isStructuralWhitelisted, isCanonicalUrlType, hasNonCanonicalParams, normalizeQueryValue } from './url';
@@ -66,6 +66,25 @@ export async function evaluateSeo(
   const stores = options?.stores ?? getDefaultStoreRegistry();
   const debug = options?.debug ?? false;
 
+  const trace: SeoReasonCode[] = [];
+
+  const finalize = (
+    partial: Omit<SeoResult, 'reasonPrimary' | 'reasonTrace'>,
+    reasonPrimary: SeoReasonCode,
+    reasonTrace: SeoReasonCode[]
+  ): SeoResult => {
+    const decision: SeoReasonCode = partial.robots === 'index,follow' ? 'DECISION_INDEX' : 'DECISION_NOINDEX';
+    const traceWithDecision = reasonTrace[reasonTrace.length - 1] === decision
+      ? reasonTrace
+      : [...reasonTrace, decision];
+
+    return {
+      ...partial,
+      reasonPrimary,
+      reasonTrace: traceWithDecision,
+    };
+  };
+
   // デバッグログ用
   const debugMessages: string[] = [];
   const log = (msg: string) => {
@@ -92,11 +111,14 @@ export async function evaluateSeo(
   if (queryUpgrade.canUpgrade && queryUpgrade.upgradePath) {
     log(`Query upgrade: ${queryUpgrade.matchType} -> ${queryUpgrade.upgradePath}`);
 
+    trace.push('UPGRADE_REDIRECT');
+
     const upgradeAbsoluteUrl = buildAbsoluteUrl(baseUrl, queryUpgrade.upgradePath);
     const parsed = parseUrl(queryUpgrade.upgradePath, query);
     const texts = generateSeoTexts(parsed, options?.carData);
 
-    return {
+    return finalize(
+      {
       robots: 'noindex,follow', // 301する前のページはnoindex
       canonicalUrl: upgradeAbsoluteUrl,
       redirectUrl: upgradeAbsoluteUrl,
@@ -106,7 +128,10 @@ export async function evaluateSeo(
       debugReason: `Query upgrade to ${queryUpgrade.upgradePath} (${queryUpgrade.matchType})`,
       urlType: parsed.type,
       parsedUrl: parsed,
-    };
+      },
+      'UPGRADE_REDIRECT',
+      trace
+    );
   }
 
   // ============================================
@@ -140,12 +165,15 @@ export async function evaluateSeo(
   if (totalCount < minIndexCount) {
     log(`Search result guard: totalCount (${totalCount}) < MIN_INDEX_COUNT (${minIndexCount}) -> noindex`);
 
+    trace.push('COUNT_GUARD_BLOCK');
+
     const texts = applySeoTextsOverride(
       generateSeoTexts(parsed, options?.carData),
       options?.customTexts
     );
 
-    return {
+    return finalize(
+      {
       robots: 'noindex,follow',
       canonicalUrl,
       title: texts.title,
@@ -154,8 +182,13 @@ export async function evaluateSeo(
       debugReason: `Search result guard: totalCount (${totalCount}) < MIN_INDEX_COUNT (${minIndexCount})`,
       urlType: parsed.type,
       parsedUrl: parsed,
-    };
+      },
+      'COUNT_GUARD_BLOCK',
+      trace
+    );
   }
+
+  trace.push('COUNT_GUARD_PASS');
 
   // ============================================
   // 4. ページネーションやソートパラメータのチェック
@@ -164,12 +197,15 @@ export async function evaluateSeo(
   if (hasNonCanonicalParams(parsed)) {
     log(`Non-canonical params detected (page >= 2) -> noindex`);
 
+    trace.push('SORT_OR_PAGINATION_NOINDEX');
+
     const texts = applySeoTextsOverride(
       generateSeoTexts(parsed, options?.carData),
       options?.customTexts
     );
 
-    return {
+    return finalize(
+      {
       robots: 'noindex,follow',
       canonicalUrl,
       title: texts.title,
@@ -178,7 +214,10 @@ export async function evaluateSeo(
       debugReason: `Non-canonical params (page=${parsed.page})`,
       urlType: parsed.type,
       parsedUrl: parsed,
-    };
+      },
+      'SORT_OR_PAGINATION_NOINDEX',
+      trace
+    );
   }
 
   // ============================================
@@ -189,12 +228,15 @@ export async function evaluateSeo(
   if (parsed.type === 'query-search' || parsed.type === 'unknown') {
     log(`Query search or unknown type -> noindex`);
 
+    trace.push('QUERY_NOINDEX');
+
     const texts = applySeoTextsOverride(
       generateSeoTexts(parsed, options?.carData),
       options?.customTexts
     );
 
-    return {
+    return finalize(
+      {
       robots: 'noindex,follow',
       canonicalUrl,
       title: texts.title,
@@ -203,19 +245,25 @@ export async function evaluateSeo(
       debugReason: `Query search or unknown URL type`,
       urlType: parsed.type,
       parsedUrl: parsed,
-    };
+      },
+      'QUERY_NOINDEX',
+      trace
+    );
   }
 
   // フリーワード検索 → noindex（但し表示はする）
   if (parsed.type === 'freeword') {
     log(`Freeword search -> noindex`);
 
+    trace.push('QUERY_NOINDEX');
+
     const texts = applySeoTextsOverride(
       generateSeoTexts(parsed, options?.carData),
       options?.customTexts
     );
 
-    return {
+    return finalize(
+      {
       robots: 'noindex,follow',
       canonicalUrl,
       title: texts.title,
@@ -224,7 +272,10 @@ export async function evaluateSeo(
       debugReason: `Freeword search`,
       urlType: parsed.type,
       parsedUrl: parsed,
-    };
+      },
+      'QUERY_NOINDEX',
+      trace
+    );
   }
 
   // 車両詳細ページ → 常にindex（ただし件数ガードは通過済み）
@@ -236,7 +287,8 @@ export async function evaluateSeo(
       options?.customTexts
     );
 
-    return {
+    return finalize(
+      {
       robots: 'index,follow',
       canonicalUrl,
       title: texts.title,
@@ -245,7 +297,10 @@ export async function evaluateSeo(
       debugReason: `Detail page`,
       urlType: parsed.type,
       parsedUrl: parsed,
-    };
+      },
+      'DECISION_INDEX',
+      trace
+    );
   }
 
   // featureページのホワイトリストチェック
@@ -253,12 +308,15 @@ export async function evaluateSeo(
     if (parsed.featureSlug && !isFeatureWhitelisted(parsed.featureSlug)) {
       log(`Feature not whitelisted: ${parsed.featureSlug} -> noindex`);
 
+      trace.push('FEATURE_NOT_WHITELISTED');
+
       const texts = applySeoTextsOverride(
         generateSeoTexts(parsed, options?.carData),
         options?.customTexts
       );
 
-      return {
+      return finalize(
+        {
         robots: 'noindex,follow',
         canonicalUrl,
         title: texts.title,
@@ -267,7 +325,10 @@ export async function evaluateSeo(
         debugReason: `Feature not in whitelist: ${parsed.featureSlug}`,
         urlType: parsed.type,
         parsedUrl: parsed,
-      };
+        },
+        'FEATURE_NOT_WHITELISTED',
+        trace
+      );
     }
   }
 
@@ -296,6 +357,18 @@ export async function evaluateSeo(
     const isStructuralWhitelistedFlag = isStructuralWhitelisted(parsed);
     log(`Structural Whitelisted: ${isStructuralWhitelistedFlag}`);
 
+    // Hysteresis trace (do not alter decision)
+    const hysteresisCode: SeoReasonCode =
+      totalCount < indexOffThreshold
+        ? 'HYSTERESIS_INDEX_OFF'
+        : totalCount >= indexOnThreshold
+          ? 'HYSTERESIS_INDEX_ON'
+          : 'HYSTERESIS_HOLD_PREVIOUS';
+    trace.push(hysteresisCode);
+
+    trace.push(isDbWhitelisted ? 'DB_ALLOW' : 'DB_DENY');
+    trace.push(isStructuralWhitelistedFlag ? 'STRUCT_ALLOW' : 'STRUCT_DENY');
+
     // 最終的なindex状態を評価
     const finalState = evaluateFinalIndexState({
       totalCount,
@@ -318,16 +391,25 @@ export async function evaluateSeo(
       options?.customTexts
     );
 
-    return {
-      robots,
-      canonicalUrl,
-      title: texts.title,
-      h1: texts.h1,
-      description: texts.description,
-      debugReason: finalState.reason + (debugMessages.length > 0 ? `\n${debugMessages.join('\n')}` : ''),
-      urlType: parsed.type,
-      parsedUrl: parsed,
-    };
+    const primary: SeoReasonCode =
+      robots === 'index,follow'
+        ? (isDbWhitelisted ? 'DB_ALLOW' : 'STRUCT_ALLOW')
+        : (hysteresisCode === 'HYSTERESIS_INDEX_ON' ? 'STRUCT_DENY' : hysteresisCode);
+
+    return finalize(
+      {
+        robots,
+        canonicalUrl,
+        title: texts.title,
+        h1: texts.h1,
+        description: texts.description,
+        debugReason: finalState.reason + (debugMessages.length > 0 ? `\n${debugMessages.join('\n')}` : ''),
+        urlType: parsed.type,
+        parsedUrl: parsed,
+      },
+      primary,
+      trace
+    );
   }
 
   // ============================================
@@ -336,12 +418,15 @@ export async function evaluateSeo(
 
   log(`Default fallback -> noindex`);
 
+  trace.push('QUERY_NOINDEX');
+
   const texts = applySeoTextsOverride(
     generateSeoTexts(parsed, options?.carData),
     options?.customTexts
   );
 
-  return {
+  return finalize(
+    {
     robots: 'noindex,follow',
     canonicalUrl,
     title: texts.title,
@@ -350,7 +435,10 @@ export async function evaluateSeo(
     debugReason: `Default fallback for type: ${parsed.type}`,
     urlType: parsed.type,
     parsedUrl: parsed,
-  };
+    },
+    'QUERY_NOINDEX',
+    trace
+  );
 }
 
 // ============================================

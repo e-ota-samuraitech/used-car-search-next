@@ -15,6 +15,21 @@ import type { SeoResult } from '@/lib/seo';
 import { evaluateSeo, getBaseUrl } from '@/lib/seo';
 import { executeSearchFromParsedUrl } from '@/lib/search';
 
+function shouldEmitSeoDebugHeaders(): boolean {
+  return process.env.NODE_ENV !== 'production' || process.env.SEO_DEBUG === '1';
+}
+
+function setSeoDebugHeaders(res: Parameters<GetServerSideProps>[0]['res'], seo: SeoResult): void {
+  if (!shouldEmitSeoDebugHeaders()) return;
+  res.setHeader('x-seo-robots', seo.robots);
+  res.setHeader('x-seo-reason', seo.reasonPrimary);
+
+  const joined = seo.reasonTrace.join('|');
+  const maxLen = 900;
+  const value = joined.length > maxLen ? `${joined.slice(0, maxLen - 3)}...` : joined;
+  res.setHeader('x-seo-trace', value);
+}
+
 // ============================================
 // ページProps
 // ============================================
@@ -35,7 +50,7 @@ interface CarsTopPageProps {
 // ============================================
 
 export const getServerSideProps: GetServerSideProps<CarsTopPageProps> = async (context) => {
-  const { req, query } = context;
+  const { req, res, query } = context;
 
   // 現在のパスとクエリ
   const pathname = '/cars/';
@@ -67,6 +82,7 @@ export const getServerSideProps: GetServerSideProps<CarsTopPageProps> = async (c
     }
 
     // 4. ページをレンダリング
+    setSeoDebugHeaders(res, seoResult);
     return {
       props: {
         seo: seoResult,
@@ -77,18 +93,23 @@ export const getServerSideProps: GetServerSideProps<CarsTopPageProps> = async (c
   } catch (error) {
     console.error('Error in getServerSideProps:', error);
 
+    const fallbackSeo: SeoResult = {
+      robots: 'noindex,follow',
+      reasonPrimary: 'QUERY_NOINDEX',
+      reasonTrace: ['QUERY_NOINDEX', 'DECISION_NOINDEX'],
+      canonicalUrl: `${baseUrl}${pathname}` as any,
+      title: '中古車検索｜更新が早い中古車情報',
+      h1: '更新が早い中古車検索',
+      description: '更新が早い中古車情報をまとめて検索。全国の最新在庫を条件別に探せます。',
+      urlType: 'cars-top',
+      parsedUrl: { type: 'cars-top', query },
+    };
+
     // エラー時もページは表示する（noindexで）
+    setSeoDebugHeaders(res, fallbackSeo);
     return {
       props: {
-        seo: {
-          robots: 'noindex,follow',
-          canonicalUrl: `${baseUrl}${pathname}` as any,
-          title: '中古車検索｜更新が早い中古車情報',
-          h1: '更新が早い中古車検索',
-          description: '更新が早い中古車情報をまとめて検索。全国の最新在庫を条件別に探せます。',
-          urlType: 'cars-top',
-          parsedUrl: { type: 'cars-top', query },
-        },
+        seo: fallbackSeo,
         cars: [],
         totalCount: 0,
       },

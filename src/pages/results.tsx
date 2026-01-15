@@ -35,7 +35,7 @@ interface ResultsPageProps {
 // ============================================
 
 export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (context) => {
-  const { req, query: urlQuery } = context;
+  const { req, res, query: urlQuery } = context;
 
   const baseUrl = getBaseUrl() || `http://${req.headers.host || 'localhost'}`;
   const q = normalizeQueryValue(urlQuery.q).trim();
@@ -97,6 +97,13 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
 
   // canonical は /cars/ へ（または null）
   const canonicalUrl = buildAbsoluteUrl(baseUrl as AbsoluteUrl, '/cars/' as Pathname);
+
+  // dev only: expose SEO decision to response headers for debugging
+  if (process.env.NODE_ENV !== 'production' || process.env.SEO_DEBUG === '1') {
+    res.setHeader('x-seo-robots', 'noindex,follow');
+    res.setHeader('x-seo-reason', 'QUERY_NOINDEX');
+    res.setHeader('x-seo-trace', 'QUERY_NOINDEX|DECISION_NOINDEX');
+  }
 
   return {
     props: {

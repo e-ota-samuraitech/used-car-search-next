@@ -15,6 +15,28 @@ export type FollowDirective = 'follow' | 'nofollow';
 export type RobotsMetaContent = `${IndexDirective},${FollowDirective}`;
 
 // ============================================
+// SEO判定理由（可視化用）
+// ============================================
+
+export type SeoReasonCode =
+  | 'UPGRADE_REDIRECT'
+  | 'COUNT_GUARD_BLOCK'
+  | 'COUNT_GUARD_PASS'
+  | 'HYSTERESIS_INDEX_ON'
+  | 'HYSTERESIS_INDEX_OFF'
+  | 'HYSTERESIS_HOLD_PREVIOUS'
+  | 'DB_ALLOW'
+  | 'DB_DENY'
+  | 'STRUCT_ALLOW'
+  | 'STRUCT_DENY'
+  | 'QUERY_NOINDEX'
+  | 'SORT_OR_PAGINATION_NOINDEX'
+  | 'FEATURE_NOT_WHITELISTED'
+  | 'CANONICAL_REDIRECT'
+  | 'DECISION_INDEX'
+  | 'DECISION_NOINDEX';
+
+// ============================================
 // URL種別と接頭辞
 // ============================================
 
@@ -114,6 +136,12 @@ export interface SeoRequestContext {
 export interface SeoResult {
   /** robots meta タグの値 */
   robots: RobotsMetaContent;
+
+  /** SEO判定の最終決定打（機微情報を含めないコードのみ） */
+  reasonPrimary: SeoReasonCode;
+
+  /** SEO判定の通過ログ（機微情報を含めないコードのみ） */
+  reasonTrace: SeoReasonCode[];
 
   /** canonical URL（絶対URL） */
   canonicalUrl: AbsoluteUrl;
