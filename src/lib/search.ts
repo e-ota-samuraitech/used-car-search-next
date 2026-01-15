@@ -18,17 +18,8 @@ export interface SeoSearchParams {
   /** キーワード検索 */
   q?: string;
 
-  /** メーカー */
-  maker?: string;
-
-  /** 都道府県 */
-  pref?: string;
-
-  /** 市区町村 */
-  city?: string;
-
-  /** feature */
-  feature?: string;
+  /** feature slug */
+  featureSlug?: string;
 
   /** 最小価格（万円） */
   minMan?: string;
@@ -74,71 +65,24 @@ export interface SearchResult {
 // ============================================
 
 /**
- * slug→日本語名マッピング（検索パラメータ用）
- */
-const PREF_SLUG_TO_NAME: Record<string, string> = {
-  tokyo: '東京都',
-  kanagawa: '神奈川県',
-  chiba: '千葉県',
-  saitama: '埼玉県',
-  osaka: '大阪府',
-  hyogo: '兵庫県',
-  kyoto: '京都府',
-  aichi: '愛知県',
-  shizuoka: '静岡県',
-  fukuoka: '福岡県',
-  kumamoto: '熊本県',
-  miyagi: '宮城県',
-};
-
-const CITY_SLUG_TO_NAME: Record<string, string> = {
-  yokohama: '横浜市',
-  kawasaki: '川崎市',
-  nagoya: '名古屋市',
-};
-
-const MAKER_SLUG_TO_NAME: Record<string, string> = {
-  toyota: 'トヨタ',
-  honda: 'ホンダ',
-  nissan: '日産',
-  suzuki: 'スズキ',
-  mazda: 'マツダ',
-  subaru: 'スバル',
-  daihatsu: 'ダイハツ',
-  mitsubishi: '三菱',
-  lexus: 'レクサス',
-  audi: 'アウディ',
-  jeep: 'ジープ',
-  volkswagen: 'フォルクスワーゲン',
-  peugeot: 'プジョー',
-  volvo: 'ボルボ',
-  'mercedes-benz': 'メルセデス・ベンツ',
-  bmw: 'BMW',
-  mini: 'MINI',
-};
-
-/**
  * ParsedUrlから検索パラメータを生成
  */
 export function parsedUrlToSearchParams(parsed: ParsedUrl): SeoSearchParams {
   const params: SeoSearchParams = {};
 
-  // 都道府県（slugを直接渡す）
+  // 都道府県（slugのみ）
   if (parsed.prefSlug) {
     params.prefSlug = parsed.prefSlug;
-    params.pref = PREF_SLUG_TO_NAME[parsed.prefSlug] || parsed.prefSlug;
   }
 
-  // 市区町村（slugを直接渡す）
+  // 市区町村（slugのみ）
   if (parsed.citySlug) {
     params.citySlug = parsed.citySlug;
-    params.city = CITY_SLUG_TO_NAME[parsed.citySlug] || parsed.citySlug;
   }
 
-  // メーカー（slugを直接渡す）
+  // メーカー（slugのみ）
   if (parsed.makerSlug) {
     params.makerSlug = parsed.makerSlug;
-    params.maker = MAKER_SLUG_TO_NAME[parsed.makerSlug] || parsed.makerSlug;
   }
 
   // 車種（slugのみ）
@@ -146,11 +90,9 @@ export function parsedUrlToSearchParams(parsed: ParsedUrl): SeoSearchParams {
     params.modelSlug = parsed.modelSlug;
   }
 
-  // feature（現状、既存検索APIはfeatureに対応していない想定。必要に応じて拡張）
+  // feature（slug）
   if (parsed.featureSlug) {
-    params.feature = parsed.featureSlug;
-    // featureを検索キーワードとして扱う（暫定）
-    params.q = parsed.featureSlug;
+    params.featureSlug = parsed.featureSlug;
   }
 
   // フリーワード
@@ -217,10 +159,9 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
 
       const searchParams = {
         q: params.q || '',
-        maker: params.maker || '',
-        region: '', // 現状未対応
-        pref: params.pref || '',
-        city: params.city || '',
+        maker: '',
+        pref: '',
+        city: '',
         minMan: params.minMan || '',
         maxMan: params.maxMan || '',
         priceChangedOnly: params.priceChangedOnly || false,
@@ -228,6 +169,7 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
         modelSlug: params.modelSlug,
         prefSlug: params.prefSlug,
         citySlug: params.citySlug,
+        featureSlug: params.featureSlug,
       };
 
       const dataSource = new MockCarDataSource();
@@ -244,9 +186,10 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
       const queryParams = new URLSearchParams();
 
       if (params.q) queryParams.append('q', params.q);
-      if (params.maker) queryParams.append('maker', params.maker);
-      if (params.pref) queryParams.append('pref', params.pref);
-      if (params.city) queryParams.append('city', params.city);
+      if (params.makerSlug) queryParams.append('maker', params.makerSlug);
+      if (params.prefSlug) queryParams.append('pref', params.prefSlug);
+      if (params.citySlug) queryParams.append('city', params.citySlug);
+      if (params.featureSlug) queryParams.append('feature', params.featureSlug);
       if (params.minMan) queryParams.append('minMan', params.minMan);
       if (params.maxMan) queryParams.append('maxMan', params.maxMan);
       if (params.priceChangedOnly) queryParams.append('priceChangedOnly', 'true');

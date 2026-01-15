@@ -130,6 +130,38 @@ function modelToSlug(model: string): string {
   return seriesMap[baseName] || baseName.toLowerCase().replace(/\s+/g, '-');
 }
 
+function inferFeatureSlugs(modelSeriesSlug: string): string[] {
+  // 最小の動作確認用。必要に応じて増やす。
+  const map: Record<string, string[]> = {
+    'prius': ['hybrid', 'sedan'],
+    'aqua': ['hybrid', 'hatchback'],
+    'fit': ['hatchback'],
+    'vezel': ['suv'],
+    'freed': ['minivan'],
+    'stepwagon': ['minivan'],
+    'civic': ['sedan'],
+    'note': ['hatchback'],
+    'serena': ['minivan'],
+    'x-trail': ['suv'],
+    'leaf': ['hatchback'],
+    'jimny': ['4wd', 'kei', 'suv'],
+    'spacia': ['kei', 'wagon'],
+    'hustler': ['kei', 'suv'],
+    'wagonr': ['kei', 'wagon'],
+    'alto': ['kei', 'hatchback'],
+    'cx-5': ['suv'],
+    'cx-8': ['suv'],
+    'mazda3': ['hatchback'],
+    'cx-30': ['suv'],
+    'tanto': ['kei', 'minivan'],
+    'move': ['kei', 'hatchback'],
+    'forester': ['suv'],
+    'impreza': ['hatchback'],
+    'levorg': ['wagon'],
+  };
+  return map[modelSeriesSlug] || [];
+}
+
 /**
  * 生データにslugを付与する関数
  */
@@ -140,6 +172,7 @@ function addSlugsToCarData(rawData: Omit<Car, 'makerSlug' | 'modelSlug' | 'prefS
     modelSlug: modelToSlug(car.model),
     prefSlug: PREF_TO_SLUG[car.pref],
     citySlug: CITY_TO_SLUG[car.city],
+    featureSlugs: inferFeatureSlugs(modelToSlug(car.model)),
   }));
 }
 

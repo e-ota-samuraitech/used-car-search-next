@@ -22,13 +22,24 @@ export interface Car {
   modelSlug?: string;
   prefSlug?: string;
   citySlug?: string;
+
+  /** feature slug一覧（検索フィルタで使用） */
+  featureSlugs?: string[];
 }
 
 export interface Filters {
-  maker: string;
-  region: string;
-  pref: string;
-  city: string;
+  /** メーカーslug（例: toyota） */
+  makerSlug: string;
+
+  /** 都道府県slug（例: tokyo） */
+  prefSlug: string;
+
+  /** 市区町村slug（例: minato） */
+  citySlug: string;
+
+  /** feature slug（例: hybrid） */
+  featureSlug: string;
+
   minMan: string;
   maxMan: string;
   priceChangedOnly: boolean;

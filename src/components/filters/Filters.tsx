@@ -1,7 +1,8 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useGeoFilters } from '@/hooks/useGeoFilters';
-import { buildFilterUrl, evaluateKeywordUpgrade } from '@/lib/seo';
+import { buildFilterUrl, evaluateKeywordUpgrade, parseUrl } from '@/lib/seo';
+import { carsKeyFromCarsPath, getFreewordContext } from '@/lib/freewordSession';
 import type { Filters as FiltersType } from '@/types';
 
 interface FiltersProps {
@@ -12,7 +13,7 @@ interface FiltersProps {
 
 const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) => {
   const { filters, query } = useApp();
-  const { regionToPrefs, prefToCities, makers, regions } = useGeoFilters();
+  const { prefToCities, makers, prefs } = useGeoFilters();
 
   const [localFilters, setLocalFilters] = useState<FiltersType>(filters);
 
@@ -20,97 +21,112 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
     setLocalFilters(filters);
   }, [filters]);
 
-  const handleRegionChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const region = e.target.value;
-    setLocalFilters({
-      ...localFilters,
-      region,
-      pref: '',
-      city: '',
-    });
-  };
-
   const handlePrefChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const pref = e.target.value;
+    const prefSlug = e.target.value;
     setLocalFilters({
       ...localFilters,
-      pref,
-      city: '',
+      prefSlug,
+      citySlug: '',
     });
   };
 
   const handleApply = () => {
-    const q = (query || '').trim();
+    const currentHref = typeof window !== 'undefined' ? window.location.href : '';
+    const currentUrl = currentHref ? new URL(currentHref) : null;
+    const pathname = currentUrl?.pathname || '';
+    const isResultsPage = pathname.startsWith('/results');
+    const isCarsPage = pathname.startsWith('/cars');
 
-    // 1) キーワードが昇格できない場合: /results に留めて q を保持し、フィルタはクエリで渡す
-    if (q) {
-      const upgrade = evaluateKeywordUpgrade(q);
-      if (!upgrade.canUpgrade) {
-        const params = new URLSearchParams();
-        params.set('q', q);
-        if (localFilters.maker) params.set('maker', localFilters.maker);
-        if (localFilters.region) params.set('region', localFilters.region);
-        if (localFilters.pref) params.set('pref', localFilters.pref);
-        if (localFilters.city) params.set('city', localFilters.city);
-        if (localFilters.minMan) params.set('minMan', localFilters.minMan);
-        if (localFilters.maxMan) params.set('maxMan', localFilters.maxMan);
-        if (localFilters.priceChangedOnly) params.set('priceChangedOnly', 'true');
+    const qFromContext = (query || '').trim();
+    const qFromUrl = isResultsPage ? (currentUrl?.searchParams.get('q') || '').trim() : '';
+    let qFromSession = '';
+    if (!isResultsPage && isCarsPage) {
+      const ctx = getFreewordContext();
+      if (ctx) {
+        const currentCarsKey = carsKeyFromCarsPath(pathname);
+        if (currentCarsKey && currentCarsKey === ctx.sourceCarsKey) {
+          qFromSession = (ctx.lastFreewordQuery || '').trim();
+        }
+      }
+    }
 
-        window.location.assign(`/results?${params.toString()}`);
+    const effectiveQ = qFromContext || qFromUrl || qFromSession;
+
+    const selectedMakerSlug = (localFilters.makerSlug || '').trim();
+
+    // spec-seo.md の正規URL構造（/cars/...）では、feature と city/maker の同時構造化は定義されていない。
+    // そのため feature を含みつつ city/maker も選ばれている場合は、/cars に寄せず /results（noindex想定）で全条件を保持する。
+    const hasIncompatibleFeatureCombo =
+      !!(localFilters.featureSlug || '').trim() &&
+      (!!(localFilters.citySlug || '').trim() || !!selectedMakerSlug);
+
+    const buildResultsUrl = () => {
+      const params = new URLSearchParams();
+      if (effectiveQ) params.set('q', effectiveQ);
+      if (selectedMakerSlug) params.set('maker', selectedMakerSlug);
+      if (localFilters.prefSlug) params.set('pref', localFilters.prefSlug);
+      if (localFilters.citySlug) params.set('city', localFilters.citySlug);
+      if (localFilters.featureSlug) params.set('feature', localFilters.featureSlug);
+      if (localFilters.minMan) params.set('minMan', localFilters.minMan);
+      if (localFilters.maxMan) params.set('maxMan', localFilters.maxMan);
+      if (localFilters.priceChangedOnly) params.set('priceChangedOnly', 'true');
+      return `/results?${params.toString()}`;
+    };
+
+    // /results はUX用のクエリ検索URL: q をURLに残す（昇格できても filters がある前提で留める）
+    if (isResultsPage && effectiveQ) {
+      window.location.assign(buildResultsUrl());
+      return;
+    }
+
+    // feature + (city or maker) は /cars で表現できないので /results に落とす
+    if (hasIncompatibleFeatureCombo) {
+      window.location.assign(buildResultsUrl());
+      return;
+    }
+
+    const q = effectiveQ;
+
+    if (q && isCarsPage) {
+      // /cars 上で freeword を保持している場合の矛盾判定（最小実装）
+      const currentParsed = parseUrl(pathname, {});
+      const currentMakerSlug = currentParsed.makerSlug || '';
+
+      // 例: /cars/m-toyota/s-prius/ 上で maker=suzuki は矛盾 → /results に落とす
+      if (currentMakerSlug && selectedMakerSlug && currentMakerSlug !== selectedMakerSlug) {
+        window.location.assign(buildResultsUrl());
         return;
       }
 
-      // 2) 昇格できる場合: /cars/... に吸収して構造化URLへ（qは消える）
+      // 矛盾しない: spec準拠の短URLに構造化（qは正規URLに載せない）
       const { url } = buildFilterUrl({
-        maker: localFilters.maker,
-        pref: localFilters.pref,
-        city: localFilters.city,
+        makerSlug: localFilters.makerSlug,
+        prefSlug: localFilters.prefSlug,
+        citySlug: localFilters.citySlug,
+        featureSlug: localFilters.featureSlug,
         minMan: localFilters.minMan,
         maxMan: localFilters.maxMan,
         priceChangedOnly: localFilters.priceChangedOnly,
       });
-
-      // 昇格パス（例: /cars/m-toyota/s-prius/）とフィルター構造をマージ
-      // - maker昇格: maker は昇格を優先
-      // - model昇格: maker+model を優先し、pref があれば pref-model へ
-      const upgradePath = upgrade.upgradePath || '/cars/';
-      const upgradedSegments = upgradePath.split('/').filter(Boolean).slice(1); // remove 'cars'
-
-      const prefSlug = localFilters.pref ? url.split('/').filter(Boolean)[1] : null;
-
-      // 既に buildFilterUrl で構造化できている場合はそれをベースにする（pref/city/maker）
-      const basePathname = url.split('?')[0];
-      const baseSegments = basePathname.split('/').filter(Boolean).slice(1);
-
-      // upgrade が model の場合
-      if (upgrade.matchType === 'model') {
-        const mSeg = upgradedSegments.find(s => s.startsWith('m-'));
-        const sSeg = upgradedSegments.find(s => s.startsWith('s-'));
-
-        if (baseSegments.length > 0 && baseSegments[0].startsWith('p-') && mSeg && sSeg) {
-          window.location.assign(`/cars/${baseSegments[0]}/${mSeg}/${sSeg}/`);
-          return;
-        }
-
-        window.location.assign(upgradePath);
-        return;
-      }
-
-      // maker/feature/pref/city の場合は、原則 base の構造化URLへ（makerは昇格済みなのでbaseがmakerなら整合）
-      if (url !== '/cars/') {
-        window.location.assign(url);
-        return;
-      }
-
-      window.location.assign(upgradePath);
+      window.location.assign(url);
       return;
+    }
+
+    // freewordだが昇格できない（または /cars 以外）: /results に留めて q を保持
+    if (q) {
+      const upgrade = evaluateKeywordUpgrade(q);
+      if (!upgrade.canUpgrade) {
+        window.location.assign(buildResultsUrl());
+        return;
+      }
     }
 
     // キーワードなし: 従来どおり構造化URLへ
     const { url } = buildFilterUrl({
-      maker: localFilters.maker,
-      pref: localFilters.pref,
-      city: localFilters.city,
+      makerSlug: localFilters.makerSlug,
+      prefSlug: localFilters.prefSlug,
+      citySlug: localFilters.citySlug,
+      featureSlug: localFilters.featureSlug,
       minMan: localFilters.minMan,
       maxMan: localFilters.maxMan,
       priceChangedOnly: localFilters.priceChangedOnly,
@@ -124,8 +140,20 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
     window.location.assign('/cars/');
   };
 
-  const prefsForRegion = localFilters.region ? regionToPrefs[localFilters.region] || [] : [];
-  const citiesForPref = localFilters.pref ? prefToCities[localFilters.pref] || [] : [];
+  const citiesForPref = localFilters.prefSlug ? prefToCities[localFilters.prefSlug] || [] : [];
+
+  const FEATURE_OPTIONS: Array<{ slug: string; label: string }> = [
+    { slug: '4wd', label: '4WD' },
+    { slug: 'hybrid', label: 'ハイブリッド' },
+    { slug: 'mt', label: 'MT' },
+    { slug: 'diesel', label: 'ディーゼル' },
+    { slug: 'suv', label: 'SUV' },
+    { slug: 'minivan', label: 'ミニバン' },
+    { slug: 'kei', label: '軽自動車' },
+    { slug: 'wagon', label: 'ワゴン' },
+    { slug: 'sedan', label: 'セダン' },
+    { slug: 'hatchback', label: 'ハッチバック' },
+  ];
 
   // PC版で閉じている場合は表示しない
   if (!isModalMode && !isOpen) {
@@ -138,27 +166,27 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
       <div className="mb-2.5">
         <label className="block text-xs text-muted mb-1.5">メーカー</label>
         <select
-          value={localFilters.maker}
-          onChange={(e) => setLocalFilters({ ...localFilters, maker: e.target.value })}
+          value={localFilters.makerSlug}
+          onChange={(e) => setLocalFilters({ ...localFilters, makerSlug: e.target.value })}
           className="w-full h-[38px] rounded-[10px] border border-gray-200 px-2.5 outline-none bg-white"
         >
           <option value="">すべて</option>
           {makers.map(m => (
-            <option key={m} value={m}>{m}</option>
+            <option key={m.slug} value={m.slug}>{m.name}</option>
           ))}
         </select>
       </div>
 
       <div className="mb-2.5">
-        <label className="block text-xs text-muted mb-1.5">地域</label>
+        <label className="block text-xs text-muted mb-1.5">feature</label>
         <select
-          value={localFilters.region}
-          onChange={handleRegionChange}
+          value={localFilters.featureSlug}
+          onChange={(e) => setLocalFilters({ ...localFilters, featureSlug: e.target.value })}
           className="w-full h-[38px] rounded-[10px] border border-gray-200 px-2.5 outline-none bg-white"
         >
           <option value="">すべて</option>
-          {regions.map(r => (
-            <option key={r} value={r}>{r}</option>
+          {FEATURE_OPTIONS.map(f => (
+            <option key={f.slug} value={f.slug}>{f.label}</option>
           ))}
         </select>
       </div>
@@ -166,16 +194,15 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
       <div className="mb-2.5">
         <label className="block text-xs text-muted mb-1.5">都道府県</label>
         <select
-          value={localFilters.pref}
+          value={localFilters.prefSlug}
           onChange={handlePrefChange}
-          disabled={!localFilters.region}
-          className="w-full h-[38px] rounded-[10px] border border-gray-200 px-2.5 outline-none bg-white disabled:opacity-50"
+          className="w-full h-[38px] rounded-[10px] border border-gray-200 px-2.5 outline-none bg-white"
         >
           <option value="">
-            {localFilters.region ? 'すべて' : 'まず地域を選択'}
+            すべて
           </option>
-          {prefsForRegion.map(p => (
-            <option key={p} value={p}>{p}</option>
+          {prefs.map(p => (
+            <option key={p.slug} value={p.slug}>{p.name}</option>
           ))}
         </select>
       </div>
@@ -183,16 +210,16 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
       <div className="mb-2.5">
         <label className="block text-xs text-muted mb-1.5">市区町村</label>
         <select
-          value={localFilters.city}
-          onChange={(e) => setLocalFilters({ ...localFilters, city: e.target.value })}
-          disabled={!localFilters.pref}
+          value={localFilters.citySlug}
+          onChange={(e) => setLocalFilters({ ...localFilters, citySlug: e.target.value })}
+          disabled={!localFilters.prefSlug}
           className="w-full h-[38px] rounded-[10px] border border-gray-200 px-2.5 outline-none bg-white disabled:opacity-50"
         >
           <option value="">
-            {localFilters.pref ? 'すべて' : 'まず都道府県を選択'}
+            {localFilters.prefSlug ? 'すべて' : 'まず都道府県を選択'}
           </option>
           {citiesForPref.map(c => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c.slug} value={c.slug}>{c.name}</option>
           ))}
         </select>
       </div>

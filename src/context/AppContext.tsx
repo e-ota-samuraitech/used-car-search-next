@@ -34,10 +34,10 @@ export const useApp = (): AppContextType => {
 };
 
 const defaultFilters: Filters = {
-  maker: '',
-  region: '',
-  pref: '',
-  city: '',
+  makerSlug: '',
+  prefSlug: '',
+  citySlug: '',
+  featureSlug: '',
   minMan: '',
   maxMan: '',
   priceChangedOnly: false,
@@ -79,10 +79,10 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       const params = new URLSearchParams();
 
       if (effectiveQuery) params.append('q', effectiveQuery);
-      if (effectiveFilters.maker) params.append('maker', effectiveFilters.maker);
-      if (effectiveFilters.region) params.append('region', effectiveFilters.region);
-      if (effectiveFilters.pref) params.append('pref', effectiveFilters.pref);
-      if (effectiveFilters.city) params.append('city', effectiveFilters.city);
+      if (effectiveFilters.makerSlug) params.append('maker', effectiveFilters.makerSlug);
+      if (effectiveFilters.prefSlug) params.append('pref', effectiveFilters.prefSlug);
+      if (effectiveFilters.citySlug) params.append('city', effectiveFilters.citySlug);
+      if (effectiveFilters.featureSlug) params.append('feature', effectiveFilters.featureSlug);
       if (effectiveFilters.minMan) params.append('minMan', effectiveFilters.minMan);
       if (effectiveFilters.maxMan) params.append('maxMan', effectiveFilters.maxMan);
       if (effectiveFilters.priceChangedOnly) params.append('priceChangedOnly', 'true');

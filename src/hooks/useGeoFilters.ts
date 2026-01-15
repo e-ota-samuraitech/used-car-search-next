@@ -1,46 +1,51 @@
 import { useMemo } from 'react';
-import { carPool } from '@/utils/data';
+import { mockCarDatabase } from '@/lib/mockCars';
 import { withinDays } from '@/utils/helpers';
 
 interface GeoFiltersResult {
-  regionToPrefs: Record<string, string[]>;
-  prefToCities: Record<string, string[]>;
-  makers: string[];
-  regions: string[];
+  prefToCities: Record<string, Array<{ slug: string; name: string }>>;
+  prefs: Array<{ slug: string; name: string }>;
+  makers: Array<{ slug: string; name: string }>;
 }
 
 export const useGeoFilters = (): GeoFiltersResult => {
-  // 地域/都道府県/市区町村のインデックスを構築
-  const { regionToPrefs, prefToCities, makers, regions } = useMemo(() => {
-    const fresh = carPool.filter(c => withinDays(c.updatedAt, 30));
+  // 都道府県/市区町村/メーカーのインデックスを構築（slug前提）
+  const { prefToCities, prefs, makers } = useMemo(() => {
+    const fresh = mockCarDatabase.filter(c => withinDays(c.updatedAt, 30));
 
-    const regionToPrefsMap: Record<string, Set<string>> = {};
-    const prefToCitiesMap: Record<string, Set<string>> = {};
+    const makersMap = new Map<string, string>();
+    const prefsMap = new Map<string, string>();
+    const prefToCitiesMap = new Map<string, Map<string, string>>();
 
     fresh.forEach(c => {
-      if (!regionToPrefsMap[c.region]) regionToPrefsMap[c.region] = new Set();
-      regionToPrefsMap[c.region].add(c.pref);
+      if (c.makerSlug) makersMap.set(c.makerSlug, c.maker);
+      if (c.prefSlug) prefsMap.set(c.prefSlug, c.pref);
 
-      if (!prefToCitiesMap[c.pref]) prefToCitiesMap[c.pref] = new Set();
-      prefToCitiesMap[c.pref].add(c.city);
+      if (c.prefSlug && c.citySlug) {
+        if (!prefToCitiesMap.has(c.prefSlug)) {
+          prefToCitiesMap.set(c.prefSlug, new Map());
+        }
+        prefToCitiesMap.get(c.prefSlug)!.set(c.citySlug, c.city);
+      }
     });
 
-    // Set を Array に変換してソート
-    const regionToPrefs: Record<string, string[]> = {};
-    Object.keys(regionToPrefsMap).forEach(k => {
-      regionToPrefs[k] = Array.from(regionToPrefsMap[k]).sort();
+    const makers = Array.from(makersMap.entries())
+      .map(([slug, name]) => ({ slug, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+    const prefs = Array.from(prefsMap.entries())
+      .map(([slug, name]) => ({ slug, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+    const prefToCities: Record<string, Array<{ slug: string; name: string }>> = {};
+    Array.from(prefToCitiesMap.entries()).forEach(([prefSlug, citiesMap]) => {
+      prefToCities[prefSlug] = Array.from(citiesMap.entries())
+        .map(([slug, name]) => ({ slug, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
     });
 
-    const prefToCities: Record<string, string[]> = {};
-    Object.keys(prefToCitiesMap).forEach(k => {
-      prefToCities[k] = Array.from(prefToCitiesMap[k]).sort();
-    });
-
-    const makers = Array.from(new Set(fresh.map(c => c.maker))).sort();
-    const regions = Array.from(new Set(fresh.map(c => c.region))).sort();
-
-    return { regionToPrefs, prefToCities, makers, regions };
+    return { prefToCities, prefs, makers };
   }, []);
 
-  return { regionToPrefs, prefToCities, makers, regions };
+  return { prefToCities, prefs, makers };
 };

@@ -31,9 +31,9 @@ export function searchCars(
     results = results.filter(car => car.modelSlug === params.modelSlug);
   }
 
-  // 地域フィルタ
-  if (params.region && params.region !== '') {
-    results = results.filter(car => car.region === params.region);
+  // feature フィルタ（slug）
+  if (params.featureSlug && params.featureSlug !== '') {
+    results = results.filter(car => (car.featureSlugs || []).includes(params.featureSlug as string));
   }
 
   // 都道府県フィルタ（slug優先、なければ日本語名で検索）

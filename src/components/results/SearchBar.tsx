@@ -1,7 +1,8 @@
 import { useEffect, useState, KeyboardEvent } from 'react';
 import { useRouter } from 'next/router';
 import { useApp } from '@/context/AppContext';
-import { normalizeQueryValue } from '@/lib/seo';
+import { normalizeQueryValue, evaluateKeywordUpgrade } from '@/lib/seo';
+import { carsKeyFromCarsPath, clearFreewordContext, setFreewordContext } from '@/lib/freewordSession';
 
 interface SearchBarProps {
   onSearch?: () => void;
@@ -20,6 +21,26 @@ const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
   const handleSearch = async () => {
     const trimmed = localQuery.trim();
     setQuery(trimmed);
+
+    if (!trimmed) {
+      clearFreewordContext();
+    }
+
+    // UI操作の検索はクライアント側で昇格分岐（SSR 301 は直アクセス用に残す）
+    if (trimmed) {
+      const upgrade = evaluateKeywordUpgrade(trimmed);
+      if (upgrade.canUpgrade && upgrade.upgradePath) {
+        const sourceCarsKey = carsKeyFromCarsPath(upgrade.upgradePath);
+        if (sourceCarsKey) {
+          setFreewordContext({ lastFreewordQuery: trimmed, sourceCarsKey });
+        } else {
+          clearFreewordContext();
+        }
+        await router.push(upgrade.upgradePath);
+        if (onSearch) onSearch();
+        return;
+      }
+    }
 
     // /results 上で同じ q をもう一度検索したい場合（URLが変わらない）
     if (router.pathname === '/results') {

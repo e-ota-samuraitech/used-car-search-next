@@ -42,7 +42,17 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   const q = normalizeQueryValue(urlQuery.q).trim();
 
   // 1. クエリ検索の昇格判定
-  if (q) {
+  //    重要: filters が付いている場合は /results に留める（UX用URL）。
+  const hasFilters =
+    !!normalizeQueryValue(urlQuery.maker).trim() ||
+    !!normalizeQueryValue(urlQuery.pref).trim() ||
+    !!normalizeQueryValue(urlQuery.city).trim() ||
+    !!normalizeQueryValue(urlQuery.feature).trim() ||
+    !!normalizeQueryValue(urlQuery.minMan).trim() ||
+    !!normalizeQueryValue(urlQuery.maxMan).trim() ||
+    ['true', '1'].includes(normalizeQueryValue(urlQuery.priceChangedOnly).trim().toLowerCase());
+
+  if (q && !hasFilters) {
     const upgrade = evaluateQueryUpgrade({ q });
 
     if (upgrade.canUpgrade && upgrade.upgradePath) {
@@ -57,10 +67,10 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   }
 
   // 2. 昇格できない → 検索を実行して表示（noindex）
-  const maker = normalizeQueryValue(urlQuery.maker).trim();
-  const region = normalizeQueryValue(urlQuery.region).trim();
-  const pref = normalizeQueryValue(urlQuery.pref).trim();
-  const city = normalizeQueryValue(urlQuery.city).trim();
+  const makerSlug = normalizeQueryValue(urlQuery.maker).trim().toLowerCase();
+  const prefSlug = normalizeQueryValue(urlQuery.pref).trim().toLowerCase();
+  const citySlug = normalizeQueryValue(urlQuery.city).trim().toLowerCase();
+  const featureSlug = normalizeQueryValue(urlQuery.feature).trim().toLowerCase();
   const minMan = normalizeQueryValue(urlQuery.minMan).trim();
   const maxMan = normalizeQueryValue(urlQuery.maxMan).trim();
   const priceChangedOnlyRaw = normalizeQueryValue(urlQuery.priceChangedOnly).trim().toLowerCase();
@@ -68,13 +78,16 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
 
   const searchParams = {
     q: q || '',
-    maker,
-    region,
-    pref,
-    city,
+    maker: '',
+    pref: '',
+    city: '',
     minMan,
     maxMan,
     priceChangedOnly,
+    makerSlug: makerSlug || undefined,
+    prefSlug: prefSlug || undefined,
+    citySlug: citySlug || undefined,
+    featureSlug: featureSlug || undefined,
   };
 
   const dataSource = new MockCarDataSource();

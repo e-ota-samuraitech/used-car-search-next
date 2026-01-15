@@ -2,12 +2,15 @@
 export interface SearchParams {
   q: string;
   maker: string;
-  region: string;
   pref: string;
   city: string;
   minMan: string;
   maxMan: string;
   priceChangedOnly: boolean;
+
+  /** feature slug（例: hybrid） */
+  featureSlug?: string;
+
   // slug ベースの検索（URLから抽出される）
   makerSlug?: string;
   modelSlug?: string;

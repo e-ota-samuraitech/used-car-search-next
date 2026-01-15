@@ -8,87 +8,19 @@
 import type { Pathname } from './types';
 import { URL_PREFIXES } from './config';
 
-// ============================================
-// 日本語名 → slug 変換辞書
-// ============================================
-
-/**
- * 都道府県名 → slug
- */
-const PREF_NAME_TO_SLUG: Record<string, string> = {
-  '東京都': 'tokyo',
-  '神奈川県': 'kanagawa',
-  '千葉県': 'chiba',
-  '埼玉県': 'saitama',
-  '大阪府': 'osaka',
-  '兵庫県': 'hyogo',
-  '京都府': 'kyoto',
-  '愛知県': 'aichi',
-  '静岡県': 'shizuoka',
-  '福岡県': 'fukuoka',
-  '熊本県': 'kumamoto',
-  '宮城県': 'miyagi',
-  // 「県」なし版
-  '東京': 'tokyo',
-  '神奈川': 'kanagawa',
-  '千葉': 'chiba',
-  '埼玉': 'saitama',
-  '大阪': 'osaka',
-  '兵庫': 'hyogo',
-  '京都': 'kyoto',
-  '愛知': 'aichi',
-  '静岡': 'shizuoka',
-  '福岡': 'fukuoka',
-  '熊本': 'kumamoto',
-  '宮城': 'miyagi',
-};
-
-/**
- * メーカー名 → slug
- */
-const MAKER_NAME_TO_SLUG: Record<string, string> = {
-  'トヨタ': 'toyota',
-  'ホンダ': 'honda',
-  '日産': 'nissan',
-  'スズキ': 'suzuki',
-  'マツダ': 'mazda',
-  'スバル': 'subaru',
-  'ダイハツ': 'daihatsu',
-  '三菱': 'mitsubishi',
-  'レクサス': 'lexus',
-  'アウディ': 'audi',
-  'ジープ': 'jeep',
-  'フォルクスワーゲン': 'volkswagen',
-  'プジョー': 'peugeot',
-  'ボルボ': 'volvo',
-  'メルセデス・ベンツ': 'mercedes-benz',
-  'BMW': 'bmw',
-  'MINI': 'mini',
-};
-
-/**
- * 市区町村名 → { prefSlug, citySlug }
- * 都道府県が分かっている場合はシンプルなslugで良い
- */
-const CITY_NAME_TO_SLUG: Record<string, string> = {
-  '横浜市': 'yokohama',
-  '川崎市': 'kawasaki',
-  '名古屋市': 'nagoya',
-  '横浜': 'yokohama',
-  '川崎': 'kawasaki',
-  '名古屋': 'nagoya',
-  // 必要に応じて追加
-};
+function isValidSlugValue(slug: string | undefined): slug is string {
+  return !!slug && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
 
 // ============================================
 // フィルター型
 // ============================================
 
 export interface FilterParams {
-  maker?: string;
-  region?: string;
-  pref?: string;
-  city?: string;
+  makerSlug?: string;
+  prefSlug?: string;
+  citySlug?: string;
+  featureSlug?: string;
   minMan?: string;
   maxMan?: string;
   priceChangedOnly?: boolean;
@@ -124,19 +56,22 @@ export interface BuildFilterUrlResult {
  *
  * 優先順位：
  * 1. pref + city + maker → /cars/p-{pref}/c-{city}/m-{maker}/
- * 2. pref + city → /cars/p-{pref}/c-{city}/
- * 3. pref + maker → /cars/p-{pref}/m-{maker}/
- * 4. pref のみ → /cars/p-{pref}/
- * 5. maker のみ → /cars/m-{maker}/
+ * 2. pref + feature → /cars/p-{pref}/f-{feature}/
+ * 3. feature → /cars/f-{feature}/
+ * 4. pref + city → /cars/p-{pref}/c-{city}/
+ * 5. pref + maker → /cars/p-{pref}/m-{maker}/
+ * 6. pref のみ → /cars/p-{pref}/
+ * 7. maker のみ → /cars/m-{maker}/
  * 6. それ以外 → /cars/ + クエリパラメータ
  */
 export function buildFilterUrl(filters: FilterParams): BuildFilterUrlResult {
   const queryParams = new URLSearchParams();
 
-  // slug変換
-  const prefSlug = filters.pref ? PREF_NAME_TO_SLUG[filters.pref] : undefined;
-  const makerSlug = filters.maker ? MAKER_NAME_TO_SLUG[filters.maker] : undefined;
-  const citySlug = filters.city ? CITY_NAME_TO_SLUG[filters.city] : undefined;
+  // slugs（URLに日本語を含めない方針）
+  const prefSlug = isValidSlugValue(filters.prefSlug) ? filters.prefSlug : undefined;
+  const citySlug = isValidSlugValue(filters.citySlug) ? filters.citySlug : undefined;
+  const makerSlug = isValidSlugValue(filters.makerSlug) ? filters.makerSlug : undefined;
+  const featureSlug = isValidSlugValue(filters.featureSlug) ? filters.featureSlug : undefined;
 
   // 構造化URLのパス部分を決定
   let pathname: Pathname = '/cars/';
@@ -145,6 +80,16 @@ export function buildFilterUrl(filters: FilterParams): BuildFilterUrlResult {
   // pref + city + maker
   if (prefSlug && citySlug && makerSlug) {
     pathname = `/cars/${URL_PREFIXES.PREF}${prefSlug}/${URL_PREFIXES.CITY}${citySlug}/${URL_PREFIXES.MAKER}${makerSlug}/` as Pathname;
+    isStructured = true;
+  }
+  // pref + feature
+  else if (prefSlug && featureSlug) {
+    pathname = `/cars/${URL_PREFIXES.PREF}${prefSlug}/${URL_PREFIXES.FEATURE}${featureSlug}/` as Pathname;
+    isStructured = true;
+  }
+  // feature
+  else if (featureSlug) {
+    pathname = `/cars/${URL_PREFIXES.FEATURE}${featureSlug}/` as Pathname;
     isStructured = true;
   }
   // pref + city
@@ -170,16 +115,8 @@ export function buildFilterUrl(filters: FilterParams): BuildFilterUrlResult {
 
   // 構造化URLに含められなかった条件をクエリパラメータに追加
 
-  // pref/city/makerがslug変換できなかった場合（未定義のメーカー等）
-  if (filters.pref && !prefSlug) {
-    queryParams.set('pref', filters.pref);
-  }
-  if (filters.city && !citySlug) {
-    queryParams.set('city', filters.city);
-  }
-  if (filters.maker && !makerSlug) {
-    queryParams.set('maker', filters.maker);
-  }
+  // spec方針: pref/city/maker/feature はURLに日本語を含めない。
+  // 変換できない値は原則クエリにも載せない（"選べるのに構造化できない"事故を防ぐ）。
 
   // 細かい条件は常にクエリパラメータ
   if (filters.minMan) {
@@ -265,6 +202,3 @@ export function citySlugToName(slug: string): string {
   };
   return reverseMap[slug] || slug;
 }
-
-// 辞書のエクスポート（他モジュールで再利用可能に）
-export { PREF_NAME_TO_SLUG, MAKER_NAME_TO_SLUG, CITY_NAME_TO_SLUG };

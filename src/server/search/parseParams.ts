@@ -12,15 +12,24 @@ function normalizeQueryParam(value: string | string[] | undefined): string {
 // Next.jsのreq.queryを正規化してSearchParamsに変換
 export function parseSearchParams(query: NextApiRequest['query']): SearchParams {
   const priceChangedOnlyStr = normalizeQueryParam(query.priceChangedOnly);
+  const makerSlug = normalizeQueryParam(query.maker);
+  const prefSlug = normalizeQueryParam(query.pref);
+  const citySlug = normalizeQueryParam(query.city);
+  const featureSlug = normalizeQueryParam(query.feature);
 
   return {
     q: normalizeQueryParam(query.q),
-    maker: normalizeQueryParam(query.maker),
-    region: normalizeQueryParam(query.region),
-    pref: normalizeQueryParam(query.pref),
-    city: normalizeQueryParam(query.city),
+    // URLは日本語を含めない方針のため、maker/pref/cityはslugとして受け取る
+    maker: '',
+    pref: '',
+    city: '',
     minMan: normalizeQueryParam(query.minMan),
     maxMan: normalizeQueryParam(query.maxMan),
     priceChangedOnly: priceChangedOnlyStr === 'true',
+
+    featureSlug: featureSlug || undefined,
+    makerSlug: makerSlug || undefined,
+    prefSlug: prefSlug || undefined,
+    citySlug: citySlug || undefined,
   };
 }
