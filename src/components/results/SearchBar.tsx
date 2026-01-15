@@ -1,6 +1,7 @@
-import { useState, KeyboardEvent } from 'react';
+import { useEffect, useState, KeyboardEvent } from 'react';
 import { useRouter } from 'next/router';
 import { useApp } from '@/context/AppContext';
+import { normalizeQueryValue } from '@/lib/seo';
 
 interface SearchBarProps {
   onSearch?: () => void;
@@ -8,17 +9,31 @@ interface SearchBarProps {
 }
 
 const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
-  const { query, setQuery } = useApp();
+  const { query, setQuery, runSearch } = useApp();
   const [localQuery, setLocalQuery] = useState(query);
   const router = useRouter();
 
-  const handleSearch = () => {
-    setQuery(localQuery);
-    if (onSearch) {
-      onSearch();
-    } else {
-      router.push('/results');
+  useEffect(() => {
+    setLocalQuery(query);
+  }, [query]);
+
+  const handleSearch = async () => {
+    const trimmed = localQuery.trim();
+    setQuery(trimmed);
+
+    // /results 上で同じ q をもう一度検索したい場合（URLが変わらない）
+    if (router.pathname === '/results') {
+      const currentQ = normalizeQueryValue(router.query.q).trim();
+      if (trimmed === currentQ) {
+        await runSearch({ query: trimmed });
+        if (onSearch) onSearch();
+        return;
+      }
     }
+
+    const nextQuery = trimmed ? { q: trimmed } : {};
+    await router.push({ pathname: '/results', query: nextQuery });
+    if (onSearch) onSearch();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {

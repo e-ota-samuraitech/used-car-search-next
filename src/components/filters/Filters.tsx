@@ -1,7 +1,7 @@
 import { useState, useEffect, ChangeEvent } from 'react';
-import { useRouter } from 'next/router';
 import { useApp } from '@/context/AppContext';
 import { useGeoFilters } from '@/hooks/useGeoFilters';
+import { buildFilterUrl } from '@/lib/seo';
 import type { Filters as FiltersType } from '@/types';
 
 interface FiltersProps {
@@ -11,9 +11,8 @@ interface FiltersProps {
 }
 
 const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) => {
-  const { filters, setFilters, resetFilters, runSearch } = useApp();
+  const { filters } = useApp();
   const { regionToPrefs, prefToCities, makers, regions } = useGeoFilters();
-  const router = useRouter();
 
   const [localFilters, setLocalFilters] = useState<FiltersType>(filters);
 
@@ -41,37 +40,23 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
   };
 
   const handleApply = () => {
-    setFilters(localFilters);
+    // 構造化URLを生成してハードナビゲーション（MPA）
+    const { url } = buildFilterUrl({
+      maker: localFilters.maker,
+      pref: localFilters.pref,
+      city: localFilters.city,
+      minMan: localFilters.minMan,
+      maxMan: localFilters.maxMan,
+      priceChangedOnly: localFilters.priceChangedOnly,
+    });
 
-    // 検索結果ページでない場合は遷移
-    if (router.pathname !== '/results') {
-      router.push('/results');
-    } else {
-      runSearch();
-    }
-
-    // モーダルモード時は閉じる
-    if (isModalMode && onClose) {
-      onClose();
-    }
+    // 完全なページリロードで遷移（広告・計測対応）
+    window.location.assign(url);
   };
 
   const handleReset = () => {
-    const emptyFilters: FiltersType = {
-      maker: '',
-      region: '',
-      pref: '',
-      city: '',
-      minMan: '',
-      maxMan: '',
-      priceChangedOnly: false,
-    };
-    setLocalFilters(emptyFilters);
-    resetFilters();
-    
-    if (router.pathname === '/results') {
-      runSearch();
-    }
+    // リセット → /cars/ に遷移（MPA）
+    window.location.assign('/cars/');
   };
 
   const prefsForRegion = localFilters.region ? regionToPrefs[localFilters.region] || [] : [];

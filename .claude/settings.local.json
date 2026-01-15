@@ -14,7 +14,8 @@
       "Bash(timeout:*)",
       "mcp__ide__getDiagnostics",
       "Bash(npm ci:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

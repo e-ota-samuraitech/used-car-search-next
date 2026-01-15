@@ -15,7 +15,7 @@ interface AppContextType {
   setResults: (results: Car[]) => void;
   estimate: Estimate | null;
   setEstimate: (estimate: Estimate | null) => void;
-  runSearch: () => Promise<void>;
+  runSearch: (input?: { query?: string; filters?: Filters }) => Promise<void>;
   findCar: (id: string) => Car | null;
   findCarsByShop: (shopName: string) => Car[];
   findShopByName: (shopName: string) => Shop | null;
@@ -70,19 +70,22 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   };
 
   // 検索実行（/api/search を呼び出し）
-  const runSearch = async () => {
+  const runSearch = async (input?: { query?: string; filters?: Filters }) => {
     try {
+      const effectiveQuery = input?.query ?? query;
+      const effectiveFilters = input?.filters ?? filters;
+
       // クエリパラメータを構築
       const params = new URLSearchParams();
 
-      if (query) params.append('q', query);
-      if (filters.maker) params.append('maker', filters.maker);
-      if (filters.region) params.append('region', filters.region);
-      if (filters.pref) params.append('pref', filters.pref);
-      if (filters.city) params.append('city', filters.city);
-      if (filters.minMan) params.append('minMan', filters.minMan);
-      if (filters.maxMan) params.append('maxMan', filters.maxMan);
-      if (filters.priceChangedOnly) params.append('priceChangedOnly', 'true');
+      if (effectiveQuery) params.append('q', effectiveQuery);
+      if (effectiveFilters.maker) params.append('maker', effectiveFilters.maker);
+      if (effectiveFilters.region) params.append('region', effectiveFilters.region);
+      if (effectiveFilters.pref) params.append('pref', effectiveFilters.pref);
+      if (effectiveFilters.city) params.append('city', effectiveFilters.city);
+      if (effectiveFilters.minMan) params.append('minMan', effectiveFilters.minMan);
+      if (effectiveFilters.maxMan) params.append('maxMan', effectiveFilters.maxMan);
+      if (effectiveFilters.priceChangedOnly) params.append('priceChangedOnly', 'true');
 
       // API呼び出し
       const response = await fetch(`/api/search?${params.toString()}`);
