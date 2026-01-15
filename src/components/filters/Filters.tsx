@@ -1,7 +1,7 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useGeoFilters } from '@/hooks/useGeoFilters';
-import { buildFilterUrl } from '@/lib/seo';
+import { buildFilterUrl, evaluateKeywordUpgrade } from '@/lib/seo';
 import type { Filters as FiltersType } from '@/types';
 
 interface FiltersProps {
@@ -11,7 +11,7 @@ interface FiltersProps {
 }
 
 const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) => {
-  const { filters } = useApp();
+  const { filters, query } = useApp();
   const { regionToPrefs, prefToCities, makers, regions } = useGeoFilters();
 
   const [localFilters, setLocalFilters] = useState<FiltersType>(filters);
@@ -40,7 +40,73 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
   };
 
   const handleApply = () => {
-    // 構造化URLを生成してハードナビゲーション（MPA）
+    const q = (query || '').trim();
+
+    // 1) キーワードが昇格できない場合: /results に留めて q を保持し、フィルタはクエリで渡す
+    if (q) {
+      const upgrade = evaluateKeywordUpgrade(q);
+      if (!upgrade.canUpgrade) {
+        const params = new URLSearchParams();
+        params.set('q', q);
+        if (localFilters.maker) params.set('maker', localFilters.maker);
+        if (localFilters.region) params.set('region', localFilters.region);
+        if (localFilters.pref) params.set('pref', localFilters.pref);
+        if (localFilters.city) params.set('city', localFilters.city);
+        if (localFilters.minMan) params.set('minMan', localFilters.minMan);
+        if (localFilters.maxMan) params.set('maxMan', localFilters.maxMan);
+        if (localFilters.priceChangedOnly) params.set('priceChangedOnly', 'true');
+
+        window.location.assign(`/results?${params.toString()}`);
+        return;
+      }
+
+      // 2) 昇格できる場合: /cars/... に吸収して構造化URLへ（qは消える）
+      const { url } = buildFilterUrl({
+        maker: localFilters.maker,
+        pref: localFilters.pref,
+        city: localFilters.city,
+        minMan: localFilters.minMan,
+        maxMan: localFilters.maxMan,
+        priceChangedOnly: localFilters.priceChangedOnly,
+      });
+
+      // 昇格パス（例: /cars/m-toyota/s-prius/）とフィルター構造をマージ
+      // - maker昇格: maker は昇格を優先
+      // - model昇格: maker+model を優先し、pref があれば pref-model へ
+      const upgradePath = upgrade.upgradePath || '/cars/';
+      const upgradedSegments = upgradePath.split('/').filter(Boolean).slice(1); // remove 'cars'
+
+      const prefSlug = localFilters.pref ? url.split('/').filter(Boolean)[1] : null;
+
+      // 既に buildFilterUrl で構造化できている場合はそれをベースにする（pref/city/maker）
+      const basePathname = url.split('?')[0];
+      const baseSegments = basePathname.split('/').filter(Boolean).slice(1);
+
+      // upgrade が model の場合
+      if (upgrade.matchType === 'model') {
+        const mSeg = upgradedSegments.find(s => s.startsWith('m-'));
+        const sSeg = upgradedSegments.find(s => s.startsWith('s-'));
+
+        if (baseSegments.length > 0 && baseSegments[0].startsWith('p-') && mSeg && sSeg) {
+          window.location.assign(`/cars/${baseSegments[0]}/${mSeg}/${sSeg}/`);
+          return;
+        }
+
+        window.location.assign(upgradePath);
+        return;
+      }
+
+      // maker/feature/pref/city の場合は、原則 base の構造化URLへ（makerは昇格済みなのでbaseがmakerなら整合）
+      if (url !== '/cars/') {
+        window.location.assign(url);
+        return;
+      }
+
+      window.location.assign(upgradePath);
+      return;
+    }
+
+    // キーワードなし: 従来どおり構造化URLへ
     const { url } = buildFilterUrl({
       maker: localFilters.maker,
       pref: localFilters.pref,
@@ -50,7 +116,6 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
       priceChangedOnly: localFilters.priceChangedOnly,
     });
 
-    // 完全なページリロードで遷移（広告・計測対応）
     window.location.assign(url);
   };
 

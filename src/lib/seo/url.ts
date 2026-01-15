@@ -86,47 +86,38 @@ export function parseUrl(pathname: string, query?: Record<string, string | strin
   const segments = normalized.split('/').filter(s => s.length > 0);
 
   // page と sort をクエリから取得
-  const page = query?.page ? parseInt(normalizeQueryValue(query.page), 10) : undefined;
+  const pageRaw = query?.page ? parseInt(normalizeQueryValue(query.page), 10) : NaN;
+  const page = Number.isFinite(pageRaw) ? pageRaw : undefined;
   const sort = query?.sort ? normalizeQueryValue(query.sort) : undefined;
+
+  const withCommonFields = <T extends Omit<ParsedUrl, 'query' | 'page' | 'sort'>>(base: T): ParsedUrl => {
+    const result: ParsedUrl = { ...base };
+    if (query) result.query = query;
+    if (page !== undefined) result.page = page;
+    if (sort) result.sort = sort;
+    return result;
+  };
 
   // フリーワード検索パターン: /results/freeword/{keyword}/index.html
   if (segments[0] === 'results' && segments[1] === 'freeword' && segments[2]) {
-    return {
+    return withCommonFields({
       type: 'freeword',
       freewordKeyword: decodeURIComponent(segments[2].replace(/\.html$/, '')),
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // /cars/ 配下以外はquery-searchまたはunknown
   if (segments[0] !== 'cars') {
     // クエリパラメータがある場合
     if (query && (query.q || query.keyword || query.maker || query.pref)) {
-      return {
-        type: 'query-search',
-        query,
-        page,
-        sort,
-      };
+      return withCommonFields({ type: 'query-search' });
     }
-    return {
-      type: 'unknown',
-      query,
-      page,
-      sort,
-    };
+    return withCommonFields({ type: 'unknown' });
   }
 
   // /cars/ のみ → cars-top
   if (segments.length === 1) {
-    return {
-      type: 'cars-top',
-      query,
-      page,
-      sort,
-    };
+    return withCommonFields({ type: 'cars-top' });
   }
 
   // セグメントをパース
@@ -168,116 +159,94 @@ export function parseUrl(pathname: string, query?: Record<string, string | strin
 
   // 車両詳細
   if (parsed.detail) {
-    return {
+    return withCommonFields({
       type: 'detail',
       detailId: parsed.detail,
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // 都道府県 + 市区町村 + メーカー
   if (parsed.pref && parsed.city && parsed.maker) {
-    return {
+    return withCommonFields({
       type: 'city-maker',
       prefSlug: parsed.pref,
       citySlug: parsed.city,
       makerSlug: parsed.maker,
-      query,
-      page,
-      sort,
-    };
+    });
+  }
+
+  // 都道府県 + メーカー + 車種
+  if (parsed.pref && parsed.maker && parsed.model) {
+    return withCommonFields({
+      type: 'pref-model',
+      prefSlug: parsed.pref,
+      makerSlug: parsed.maker,
+      modelSlug: parsed.model,
+    });
   }
 
   // 都道府県 + メーカー
   if (parsed.pref && parsed.maker) {
-    return {
+    return withCommonFields({
       type: 'pref-maker',
       prefSlug: parsed.pref,
       makerSlug: parsed.maker,
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // 都道府県 + feature
   if (parsed.pref && parsed.feature) {
-    return {
+    return withCommonFields({
       type: 'pref-feature',
       prefSlug: parsed.pref,
       featureSlug: parsed.feature,
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // 都道府県 + 市区町村
   if (parsed.pref && parsed.city) {
-    return {
+    return withCommonFields({
       type: 'city',
       prefSlug: parsed.pref,
       citySlug: parsed.city,
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // 都道府県のみ
   if (parsed.pref) {
-    return {
+    return withCommonFields({
       type: 'pref',
       prefSlug: parsed.pref,
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // メーカー + 車種
   if (parsed.maker && parsed.model) {
-    return {
+    return withCommonFields({
       type: 'model',
       makerSlug: parsed.maker,
       modelSlug: parsed.model,
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // メーカーのみ
   if (parsed.maker) {
-    return {
+    return withCommonFields({
       type: 'maker',
       makerSlug: parsed.maker,
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // feature全国
   if (parsed.feature) {
-    return {
+    return withCommonFields({
       type: 'feature',
       featureSlug: parsed.feature,
-      query,
-      page,
-      sort,
-    };
+    });
   }
 
   // その他（クエリ検索として扱う）
-  return {
-    type: 'query-search',
-    query,
-    page,
-    sort,
-  };
+  return withCommonFields({ type: 'query-search' });
 }
 
 // ============================================
@@ -303,6 +272,9 @@ export function buildCanonicalPath(parsed: ParsedUrl): Pathname {
 
     case 'model':
       return `/cars/${URL_PREFIXES.MAKER}${parsed.makerSlug}/${URL_PREFIXES.MODEL}${parsed.modelSlug}/`;
+
+    case 'pref-model':
+      return `/cars/${URL_PREFIXES.PREF}${parsed.prefSlug}/${URL_PREFIXES.MAKER}${parsed.makerSlug}/${URL_PREFIXES.MODEL}${parsed.modelSlug}/`;
 
     case 'feature':
       return `/cars/${URL_PREFIXES.FEATURE}${parsed.featureSlug}/`;
@@ -357,6 +329,7 @@ export function isCanonicalUrlType(type: UrlType): boolean {
     'city',
     'maker',
     'model',
+    'pref-model',
     'feature',
     'pref-feature',
     'pref-maker',

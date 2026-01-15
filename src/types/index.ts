@@ -17,6 +17,11 @@ export interface Car {
   postedAt: number;
   priceChangedAt: number | null;
   shop: string;
+  // SEO用slugフィールド（検索で使用）
+  makerSlug?: string;
+  modelSlug?: string;
+  prefSlug?: string;
+  citySlug?: string;
 }
 
 export interface Filters {

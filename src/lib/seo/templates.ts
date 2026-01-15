@@ -194,6 +194,18 @@ export function generateSeoTexts(parsed: ParsedUrl, carData?: any): SeoTexts {
       };
     }
 
+    // 5.1 /cars/p-{pref}/m-{maker}/s-{model}/ - 都道府県×メーカー×車種
+    case 'pref-model': {
+      const prefName = getPrefName(parsed.prefSlug);
+      const makerName = getMakerName(parsed.makerSlug);
+      const modelName = parsed.modelSlug || '';
+      return {
+        title: `${prefName}の${makerName} ${modelName}中古車｜最新更新順の在庫一覧`,
+        h1: `${prefName}の${makerName} ${modelName}中古車一覧`,
+        description: `${prefName}で販売中の${makerName} ${modelName}中古車を最新更新順で掲載。条件別に在庫を確認できます。`,
+      };
+    }
+
     // 6. /cars/f-{feature}/ - feature全国
     case 'feature': {
       const featureName = getFeatureName(parsed.featureSlug);

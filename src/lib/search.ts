@@ -44,6 +44,12 @@ export interface SeoSearchParams {
 
   /** ソート */
   sort?: string;
+
+  // slug ベースの検索（URLから抽出される）
+  makerSlug?: string;
+  modelSlug?: string;
+  prefSlug?: string;
+  citySlug?: string;
 }
 
 /**
@@ -117,19 +123,27 @@ const MAKER_SLUG_TO_NAME: Record<string, string> = {
 export function parsedUrlToSearchParams(parsed: ParsedUrl): SeoSearchParams {
   const params: SeoSearchParams = {};
 
-  // 都道府県
+  // 都道府県（slugを直接渡す）
   if (parsed.prefSlug) {
+    params.prefSlug = parsed.prefSlug;
     params.pref = PREF_SLUG_TO_NAME[parsed.prefSlug] || parsed.prefSlug;
   }
 
-  // 市区町村
+  // 市区町村（slugを直接渡す）
   if (parsed.citySlug) {
+    params.citySlug = parsed.citySlug;
     params.city = CITY_SLUG_TO_NAME[parsed.citySlug] || parsed.citySlug;
   }
 
-  // メーカー
+  // メーカー（slugを直接渡す）
   if (parsed.makerSlug) {
+    params.makerSlug = parsed.makerSlug;
     params.maker = MAKER_SLUG_TO_NAME[parsed.makerSlug] || parsed.makerSlug;
+  }
+
+  // 車種（slugのみ）
+  if (parsed.modelSlug) {
+    params.modelSlug = parsed.modelSlug;
   }
 
   // feature（現状、既存検索APIはfeatureに対応していない想定。必要に応じて拡張）
@@ -210,6 +224,10 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
         minMan: params.minMan || '',
         maxMan: params.maxMan || '',
         priceChangedOnly: params.priceChangedOnly || false,
+        makerSlug: params.makerSlug,
+        modelSlug: params.modelSlug,
+        prefSlug: params.prefSlug,
+        citySlug: params.citySlug,
       };
 
       const dataSource = new MockCarDataSource();

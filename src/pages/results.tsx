@@ -57,15 +57,24 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   }
 
   // 2. 昇格できない → 検索を実行して表示（noindex）
+  const maker = normalizeQueryValue(urlQuery.maker).trim();
+  const region = normalizeQueryValue(urlQuery.region).trim();
+  const pref = normalizeQueryValue(urlQuery.pref).trim();
+  const city = normalizeQueryValue(urlQuery.city).trim();
+  const minMan = normalizeQueryValue(urlQuery.minMan).trim();
+  const maxMan = normalizeQueryValue(urlQuery.maxMan).trim();
+  const priceChangedOnlyRaw = normalizeQueryValue(urlQuery.priceChangedOnly).trim().toLowerCase();
+  const priceChangedOnly = priceChangedOnlyRaw === 'true' || priceChangedOnlyRaw === '1';
+
   const searchParams = {
     q: q || '',
-    maker: '',
-    region: '',
-    pref: '',
-    city: '',
-    minMan: '',
-    maxMan: '',
-    priceChangedOnly: false,
+    maker,
+    region,
+    pref,
+    city,
+    minMan,
+    maxMan,
+    priceChangedOnly,
   };
 
   const dataSource = new MockCarDataSource();

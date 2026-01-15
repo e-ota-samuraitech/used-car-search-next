@@ -153,7 +153,7 @@ const EstimateForm = ({ car }: EstimateFormProps) => {
           <button
             className="h-10 px-3.5 border border-gray-200 rounded-full bg-white cursor-pointer whitespace-nowrap"
             type="button"
-            onClick={() => router.push(`/car/${car.id}`)}
+            onClick={() => router.push(`/cars/d-${car.id}/`)}
           >
             車両詳細へ戻る
           </button>

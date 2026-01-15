@@ -18,7 +18,7 @@ export default function EstimatePage() {
           <div className="text-xs text-muted px-3 pt-2.5">
             <Link href="/" className="underline underline-offset-2">トップ</Link> /{' '}
             <Link href="/results" className="underline underline-offset-2">検索結果</Link> /{' '}
-            <Link href={`/car/${id}`} className="underline underline-offset-2">車両詳細</Link> / 見積もり申し込み
+            <Link href={`/cars/d-${id}/`} className="underline underline-offset-2">車両詳細</Link> / 見積もり申し込み
           </div>
           <EstimateForm car={car} />
         </div>

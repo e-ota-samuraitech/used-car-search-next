@@ -4,9 +4,148 @@ import type { Car } from '@/types';
 const now = Date.now();
 const DAY = 24 * 60 * 60 * 1000;
 
+// ============================================
+// 日本語名 → slug 変換辞書
+// ============================================
+
+const MAKER_TO_SLUG: Record<string, string> = {
+  'トヨタ': 'toyota',
+  'ホンダ': 'honda',
+  '日産': 'nissan',
+  'スズキ': 'suzuki',
+  'マツダ': 'mazda',
+  'スバル': 'subaru',
+  'ダイハツ': 'daihatsu',
+  '三菱': 'mitsubishi',
+  'レクサス': 'lexus',
+  'メルセデス・ベンツ': 'mercedes-benz',
+  'BMW': 'bmw',
+  'フォルクスワーゲン': 'volkswagen',
+  'アウディ': 'audi',
+  'ボルボ': 'volvo',
+  'MINI': 'mini',
+  'ジープ': 'jeep',
+  'プジョー': 'peugeot',
+};
+
+const PREF_TO_SLUG: Record<string, string> = {
+  '東京都': 'tokyo',
+  '神奈川県': 'kanagawa',
+  '千葉県': 'chiba',
+  '埼玉県': 'saitama',
+  '大阪府': 'osaka',
+  '兵庫県': 'hyogo',
+  '京都府': 'kyoto',
+  '愛知県': 'aichi',
+  '静岡県': 'shizuoka',
+  '福岡県': 'fukuoka',
+  '熊本県': 'kumamoto',
+  '宮城県': 'miyagi',
+};
+
+const CITY_TO_SLUG: Record<string, string> = {
+  '横浜市': 'yokohama',
+  '川崎市': 'kawasaki',
+  '名古屋市': 'nagoya',
+  '大阪市': 'osaka',
+  '京都市': 'kyoto',
+  '神戸市': 'kobe',
+  '福岡市': 'fukuoka',
+  '仙台市': 'sendai',
+  '千葉市': 'chiba',
+  'さいたま市': 'saitama',
+  '浜松市': 'hamamatsu',
+  '熊本市': 'kumamoto',
+  '堺市': 'sakai',
+  '豊田市': 'toyota',
+  '船橋市': 'funabashi',
+  '港区': 'minato',
+  '渋谷区': 'shibuya',
+  '世田谷区': 'setagaya',
+  '新宿区': 'shinjuku',
+};
+
+/**
+ * モデル名からslugを生成（簡易版）
+ * 本番ではDB側でslugを管理する想定
+ */
+function modelToSlug(model: string): string {
+  // 仕様: modelSlug は「車種シリーズ」粒度に統一する（グレードは含めない）
+  // 例: "プリウス S" → "prius"
+
+  const baseName = model.trim().split(/\s+/)[0] || model.trim();
+
+  const seriesMap: Record<string, string> = {
+    'プリウス': 'prius',
+    'アクア': 'aqua',
+    'ハリアー': 'harrier',
+    'アルファード': 'alphard',
+    'ヤリス': 'yaris',
+    'RAV4': 'rav4',
+    'カローラツーリング': 'corolla-touring',
+    'N-BOX': 'n-box',
+    'フィット': 'fit',
+    'ヴェゼル': 'vezel',
+    'フリード': 'freed',
+    'ステップワゴン': 'stepwagon',
+    'シビック': 'civic',
+    'ノート': 'note',
+    'セレナ': 'serena',
+    'エクストレイル': 'x-trail',
+    'リーフ': 'leaf',
+    'キックス': 'kicks',
+    'ジムニー': 'jimny',
+    'スペーシア': 'spacia',
+    'ハスラー': 'hustler',
+    'ワゴンR': 'wagonr',
+    'アルト': 'alto',
+    'CX-5': 'cx-5',
+    'CX-8': 'cx-8',
+    'MAZDA3': 'mazda3',
+    'CX-30': 'cx-30',
+    'ロードスター': 'roadster',
+    'タント': 'tanto',
+    'ムーヴ': 'move',
+    'ロッキー': 'rocky',
+    'フォレスター': 'forester',
+    'インプレッサ': 'impreza',
+    'XV': 'xv',
+    'レヴォーグ': 'levorg',
+    'デリカ': 'delica',
+    'eKワゴン': 'ek-wagon',
+    'アウトランダーPHEV': 'outlander-phev',
+    'NX300h': 'nx300h',
+    'RX450h': 'rx450h',
+    'CT200h': 'ct200h',
+    'Cクラス': 'c-class',
+    '3シリーズ': '3-series',
+    'ゴルフ': 'golf',
+    'A4': 'a4',
+    'XC60': 'xc60',
+    'MINI': 'mini',
+    'ラングラー': 'wrangler',
+    '308': '308',
+  };
+
+  return seriesMap[baseName] || baseName.toLowerCase().replace(/\s+/g, '-');
+}
+
+/**
+ * 生データにslugを付与する関数
+ */
+function addSlugsToCarData(rawData: Omit<Car, 'makerSlug' | 'modelSlug' | 'prefSlug' | 'citySlug'>[]): Car[] {
+  return rawData.map(car => ({
+    ...car,
+    makerSlug: MAKER_TO_SLUG[car.maker],
+    modelSlug: modelToSlug(car.model),
+    prefSlug: PREF_TO_SLUG[car.pref],
+    citySlug: CITY_TO_SLUG[car.city],
+  }));
+}
+
 // カーセンサーAPI代替のダミーデータ
 // 実際のAPIが来たら、このファイルは不要になります
-export const mockCarDatabase: Car[] = [
+const rawCarData = [
   // トヨタ車
   {
     id: "c1",
@@ -1069,3 +1208,6 @@ export const mockCarDatabase: Car[] = [
     shop: "堺カーセンター"
   }
 ];
+
+// slug付きでエクスポート
+export const mockCarDatabase: Car[] = addSlugsToCarData(rawCarData);

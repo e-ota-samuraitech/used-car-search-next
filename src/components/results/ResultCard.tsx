@@ -16,7 +16,7 @@ const ResultCard = ({ car }: ResultCardProps) => {
   const deltaText = delta === 0 ? '' : delta > 0 ? `+${yen(delta)}` : `${yen(delta)}`;
 
   const handleCardClick = () => {
-    router.push(`/car/${car.id}`);
+    router.push(`/cars/d-${car.id}/`);
   };
 
   const handleEstimateClick = (e: React.MouseEvent) => {

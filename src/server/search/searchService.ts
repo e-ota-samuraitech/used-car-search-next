@@ -19,9 +19,16 @@ export function searchCars(
   // 30日以内に更新されたデータのみ
   results = results.filter(car => withinDays(car.updatedAt, 30));
 
-  // メーカーフィルタ
-  if (params.maker && params.maker !== '') {
+  // メーカーフィルタ（slug優先、なければ日本語名で検索）
+  if (params.makerSlug && params.makerSlug !== '') {
+    results = results.filter(car => car.makerSlug === params.makerSlug);
+  } else if (params.maker && params.maker !== '') {
     results = results.filter(car => car.maker === params.maker);
+  }
+
+  // 車種フィルタ（slugのみ）
+  if (params.modelSlug && params.modelSlug !== '') {
+    results = results.filter(car => car.modelSlug === params.modelSlug);
   }
 
   // 地域フィルタ
@@ -29,13 +36,17 @@ export function searchCars(
     results = results.filter(car => car.region === params.region);
   }
 
-  // 都道府県フィルタ
-  if (params.pref && params.pref !== '') {
+  // 都道府県フィルタ（slug優先、なければ日本語名で検索）
+  if (params.prefSlug && params.prefSlug !== '') {
+    results = results.filter(car => car.prefSlug === params.prefSlug);
+  } else if (params.pref && params.pref !== '') {
     results = results.filter(car => car.pref === params.pref);
   }
 
-  // 市区町村フィルタ
-  if (params.city && params.city !== '') {
+  // 市区町村フィルタ（slug優先、なければ日本語名で検索）
+  if (params.citySlug && params.citySlug !== '') {
+    results = results.filter(car => car.citySlug === params.citySlug);
+  } else if (params.city && params.city !== '') {
     results = results.filter(car => car.city === params.city);
   }
 

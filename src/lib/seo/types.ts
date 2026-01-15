@@ -38,6 +38,7 @@ export type UrlType =
   | 'city'               // /cars/p-{pref}/c-{city}/
   | 'maker'              // /cars/m-{maker}/
   | 'model'              // /cars/m-{maker}/s-{model}/
+  | 'pref-model'         // /cars/p-{pref}/m-{maker}/s-{model}/
   | 'feature'            // /cars/f-{feature}/
   | 'pref-feature'       // /cars/p-{pref}/f-{feature}/
   | 'pref-maker'         // /cars/p-{pref}/m-{maker}/
