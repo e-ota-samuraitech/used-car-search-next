@@ -5,6 +5,20 @@
 
 import type { Car } from '@/types';
 import type { ParsedUrl } from './seo/types';
+import type { SearchQuery, SearchSort } from '@/server/search/searchClient';
+
+function normalizeSort(value: string | undefined): SearchSort | undefined {
+  if (!value) return undefined;
+  switch (value) {
+    case 'updated_desc':
+    case 'price_asc':
+    case 'price_desc':
+    case 'live':
+      return value;
+    default:
+      return undefined;
+  }
+}
 
 // ============================================
 // 検索パラメータ（SEO用）
@@ -152,33 +166,30 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
     const isServer = typeof window === 'undefined';
 
     if (isServer) {
-      // サーバーサイドの場合、直接searchServiceをインポートして使用
-      // ここではfetchを使う例を示すが、実際には searchService を直接呼び出す方が効率的
-      const { searchCars } = await import('@/server/search/searchService');
-      const { MockCarDataSource } = await import('@/server/search/dataSource/mockDataSource');
+      // Server-side: always use the unified SearchClient (single source of truth for totalCount)
+      const { getSearchClient } = await import('@/server/search/searchClient');
+      const client = getSearchClient();
 
-      const searchParams = {
-        q: params.q || '',
-        maker: '',
-        pref: '',
-        city: '',
-        minMan: params.minMan || '',
-        maxMan: params.maxMan || '',
-        priceChangedOnly: params.priceChangedOnly || false,
+      const query: SearchQuery = {
+        q: params.q,
         makerSlug: params.makerSlug,
         modelSlug: params.modelSlug,
         prefSlug: params.prefSlug,
         citySlug: params.citySlug,
         featureSlug: params.featureSlug,
+        minMan: params.minMan,
+        maxMan: params.maxMan,
+        priceChangedOnly: params.priceChangedOnly,
+        page: params.page,
+        sort: normalizeSort(params.sort),
       };
 
-      const dataSource = new MockCarDataSource();
-      const results = searchCars(searchParams, dataSource);
+      const result = await client.search(query);
 
       return {
-        items: results,
-        totalCount: results.length,
-        count: results.length,
+        items: result.items,
+        totalCount: result.totalCount,
+        count: result.items.length,
         params,
       };
     } else {
@@ -187,12 +198,16 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
 
       if (params.q) queryParams.append('q', params.q);
       if (params.makerSlug) queryParams.append('maker', params.makerSlug);
+      if (params.modelSlug) queryParams.append('model', params.modelSlug);
       if (params.prefSlug) queryParams.append('pref', params.prefSlug);
       if (params.citySlug) queryParams.append('city', params.citySlug);
       if (params.featureSlug) queryParams.append('feature', params.featureSlug);
       if (params.minMan) queryParams.append('minMan', params.minMan);
       if (params.maxMan) queryParams.append('maxMan', params.maxMan);
       if (params.priceChangedOnly) queryParams.append('priceChangedOnly', 'true');
+      if (typeof params.page === 'number') queryParams.append('page', String(params.page));
+      const sort = normalizeSort(params.sort);
+      if (sort) queryParams.append('sort', sort);
 
       const response = await fetch(`/api/search?${queryParams.toString()}`);
 
@@ -200,12 +215,23 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
         throw new Error('Search API failed');
       }
 
-      const data = await response.json();
+      const data: unknown = await response.json();
+      if (!data || typeof data !== 'object') {
+        throw new Error('Search API returned invalid JSON');
+      }
+
+      const record = data as Record<string, unknown>;
+      const items = Array.isArray(record.items) ? (record.items as Car[]) : [];
+      const totalCount = typeof record.totalCount === 'number' ? record.totalCount : NaN;
+
+      if (!Number.isFinite(totalCount)) {
+        throw new Error('Search API must return totalCount');
+      }
 
       return {
-        items: data.items || [],
-        totalCount: data.items?.length || 0,
-        count: data.items?.length || 0,
+        items,
+        totalCount,
+        count: items.length,
         params,
       };
     }

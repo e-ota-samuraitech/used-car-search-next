@@ -13,6 +13,8 @@ interface AppContextType {
   setSortBy: (sortBy: SortBy) => void;
   results: Car[];
   setResults: (results: Car[]) => void;
+  totalCount: number;
+  setTotalCount: (totalCount: number) => void;
   estimate: Estimate | null;
   setEstimate: (estimate: Estimate | null) => void;
   runSearch: (input?: { query?: string; filters?: Filters }) => Promise<void>;
@@ -52,6 +54,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [sortBy, setSortBy] = useState<SortBy>('updated_desc');
   const [results, setResults] = useState<Car[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
 
   // ソートロジック
@@ -95,14 +98,25 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       }
 
       const data = await response.json();
-      const items: Car[] = data.items || [];
+      const record: unknown = data;
+      if (!record || typeof record !== 'object') {
+        throw new Error('Search API returned invalid JSON');
+      }
+      const r = record as Record<string, unknown>;
+      const items: Car[] = Array.isArray(r.items) ? (r.items as Car[]) : [];
+      const count = typeof r.totalCount === 'number' ? r.totalCount : NaN;
+      if (!Number.isFinite(count)) {
+        throw new Error('Search API must return totalCount');
+      }
 
       // ソートを適用してから結果をセット
       const sorted = applySort(items);
       setResults(sorted);
+      setTotalCount(count);
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
+      setTotalCount(0);
     }
   };
 
@@ -136,6 +150,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     setSortBy,
     results,
     setResults,
+    totalCount,
+    setTotalCount,
     estimate,
     setEstimate,
     runSearch,

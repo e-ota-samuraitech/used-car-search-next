@@ -17,8 +17,7 @@ import Filters from '@/components/filters/Filters';
 import type { Car, SortBy } from '@/types';
 import type { AbsoluteUrl, Pathname } from '@/lib/seo';
 import { buildAbsoluteUrl, normalizeQueryValue, evaluateQueryUpgrade, getBaseUrl } from '@/lib/seo';
-import { searchCars } from '@/server/search/searchService';
-import { MockCarDataSource } from '@/server/search/dataSource/mockDataSource';
+import type { SearchQuery } from '@/server/search/searchClient';
 
 // ============================================
 // ページProps
@@ -78,23 +77,23 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   const priceChangedOnlyRaw = normalizeQueryValue(urlQuery.priceChangedOnly).trim().toLowerCase();
   const priceChangedOnly = priceChangedOnlyRaw === 'true' || priceChangedOnlyRaw === '1';
 
-  const searchParams = {
-    q: q || '',
-    maker: '',
-    pref: '',
-    city: '',
-    minMan,
-    maxMan,
-    priceChangedOnly,
+  const searchQuery: SearchQuery = {
+    q: q || undefined,
     makerSlug: makerSlug || undefined,
     modelSlug: modelSlug || undefined,
     prefSlug: prefSlug || undefined,
     citySlug: citySlug || undefined,
     featureSlug: featureSlug || undefined,
+    minMan: minMan || undefined,
+    maxMan: maxMan || undefined,
+    priceChangedOnly,
+    // /results is UX-only; allow sort/page in future, but keep SEO noindex
   };
 
-  const dataSource = new MockCarDataSource();
-  const cars = searchCars(searchParams, dataSource);
+  const { getSearchClient } = await import('@/server/search/searchClient');
+  const client = getSearchClient();
+  const searchResult = await client.search(searchQuery);
+  const cars = searchResult.items;
 
   // canonical は /cars/ へ（または null）
   const canonicalUrl = buildAbsoluteUrl(baseUrl as AbsoluteUrl, '/cars/' as Pathname);
@@ -102,7 +101,7 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   return {
     props: {
       cars,
-      totalCount: cars.length,
+      totalCount: searchResult.totalCount,
       query: q,
       canonicalUrl,
     },

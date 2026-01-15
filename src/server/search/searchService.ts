@@ -1,6 +1,7 @@
 import type { Car } from '@/types';
 import type { SearchParams } from './types';
 import type { ICarDataSource } from './dataSource/interface';
+import { SEARCH_MAX_AGE_DAYS } from './config';
 
 // 指定日数以内に更新されたかチェック
 function withinDays(timestamp: number, days: number): boolean {
@@ -16,8 +17,8 @@ export function searchCars(
   // データソースから全データを取得
   let results = dataSource.getAllCars();
 
-  // 30日以内に更新されたデータのみ
-  results = results.filter(car => withinDays(car.updatedAt, 30));
+  // 指定日数以内に更新されたデータのみ（共通ポリシー）
+  results = results.filter(car => withinDays(car.updatedAt, SEARCH_MAX_AGE_DAYS));
 
   // メーカーフィルタ（slug優先、なければ日本語名で検索）
   if (params.makerSlug && params.makerSlug !== '') {
@@ -62,8 +63,9 @@ export function searchCars(
   }
 
   // 価格変動ありのみ
+  // 定義: prevPriceYen が存在し、かつ prevPriceYen !== priceYen
   if (params.priceChangedOnly) {
-    results = results.filter(car => car.prevPriceYen !== car.priceYen);
+    results = results.filter(car => car.prevPriceYen !== null && car.prevPriceYen !== undefined && car.prevPriceYen !== car.priceYen);
   }
 
   // キーワード検索（モデル名・メーカー名に含まれるか）
