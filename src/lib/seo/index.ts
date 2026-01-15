@@ -377,3 +377,4 @@ export * from './templates';
 export * from './stores';
 export * from './stores/inMemory';
 export * from './buildFilterUrl';
+export * from './buildSearchUrl';

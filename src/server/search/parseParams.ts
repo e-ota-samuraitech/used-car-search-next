@@ -13,6 +13,7 @@ function normalizeQueryParam(value: string | string[] | undefined): string {
 export function parseSearchParams(query: NextApiRequest['query']): SearchParams {
   const priceChangedOnlyStr = normalizeQueryParam(query.priceChangedOnly);
   const makerSlug = normalizeQueryParam(query.maker);
+  const modelSlug = normalizeQueryParam(query.model);
   const prefSlug = normalizeQueryParam(query.pref);
   const citySlug = normalizeQueryParam(query.city);
   const featureSlug = normalizeQueryParam(query.feature);
@@ -29,6 +30,7 @@ export function parseSearchParams(query: NextApiRequest['query']): SearchParams 
 
     featureSlug: featureSlug || undefined,
     makerSlug: makerSlug || undefined,
+    modelSlug: modelSlug || undefined,
     prefSlug: prefSlug || undefined,
     citySlug: citySlug || undefined,
   };

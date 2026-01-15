@@ -175,16 +175,6 @@ export function parseUrl(pathname: string, query?: Record<string, string | strin
     });
   }
 
-  // 都道府県 + メーカー + 車種
-  if (parsed.pref && parsed.maker && parsed.model) {
-    return withCommonFields({
-      type: 'pref-model',
-      prefSlug: parsed.pref,
-      makerSlug: parsed.maker,
-      modelSlug: parsed.model,
-    });
-  }
-
   // 都道府県 + メーカー
   if (parsed.pref && parsed.maker) {
     return withCommonFields({
@@ -273,9 +263,6 @@ export function buildCanonicalPath(parsed: ParsedUrl): Pathname {
     case 'model':
       return `/cars/${URL_PREFIXES.MAKER}${parsed.makerSlug}/${URL_PREFIXES.MODEL}${parsed.modelSlug}/`;
 
-    case 'pref-model':
-      return `/cars/${URL_PREFIXES.PREF}${parsed.prefSlug}/${URL_PREFIXES.MAKER}${parsed.makerSlug}/${URL_PREFIXES.MODEL}${parsed.modelSlug}/`;
-
     case 'feature':
       return `/cars/${URL_PREFIXES.FEATURE}${parsed.featureSlug}/`;
 
@@ -329,7 +316,6 @@ export function isCanonicalUrlType(type: UrlType): boolean {
     'city',
     'maker',
     'model',
-    'pref-model',
     'feature',
     'pref-feature',
     'pref-maker',

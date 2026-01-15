@@ -1,7 +1,7 @@
 import { useEffect, useState, KeyboardEvent } from 'react';
 import { useRouter } from 'next/router';
 import { useApp } from '@/context/AppContext';
-import { normalizeQueryValue, evaluateKeywordUpgrade } from '@/lib/seo';
+import { buildSearchUrl, normalizeQueryValue } from '@/lib/seo';
 import { carsKeyFromCarsPath, clearFreewordContext, setFreewordContext } from '@/lib/freewordSession';
 
 interface SearchBarProps {
@@ -10,7 +10,7 @@ interface SearchBarProps {
 }
 
 const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
-  const { query, setQuery, runSearch } = useApp();
+  const { query, setQuery, runSearch, filters } = useApp();
   const [localQuery, setLocalQuery] = useState(query);
   const router = useRouter();
 
@@ -26,34 +26,43 @@ const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
       clearFreewordContext();
     }
 
-    // UI操作の検索はクライアント側で昇格分岐（SSR 301 は直アクセス用に残す）
-    if (trimmed) {
-      const upgrade = evaluateKeywordUpgrade(trimmed);
-      if (upgrade.canUpgrade && upgrade.upgradePath) {
-        const sourceCarsKey = carsKeyFromCarsPath(upgrade.upgradePath);
-        if (sourceCarsKey) {
-          setFreewordContext({ lastFreewordQuery: trimmed, sourceCarsKey });
-        } else {
-          clearFreewordContext();
-        }
-        await router.push(upgrade.upgradePath);
-        if (onSearch) onSearch();
-        return;
+    // 遷移先の決定は1箇所に集約（specに完全一致のみ /cars、それ以外は /results に全条件保持）
+    const next = buildSearchUrl({
+      q: trimmed,
+      makerSlug: filters.makerSlug,
+      prefSlug: filters.prefSlug,
+      citySlug: filters.citySlug,
+      featureSlug: filters.featureSlug,
+      minMan: filters.minMan,
+      maxMan: filters.maxMan,
+      priceChangedOnly: filters.priceChangedOnly,
+    });
+
+    if (next.destination === 'cars') {
+      const sourceCarsKey = carsKeyFromCarsPath(next.url);
+      if (sourceCarsKey && trimmed) {
+        setFreewordContext({ lastFreewordQuery: trimmed, sourceCarsKey });
+      } else {
+        clearFreewordContext();
       }
+      await router.push(next.url);
+      if (onSearch) onSearch();
+      return;
     }
+
+    clearFreewordContext();
 
     // /results 上で同じ q をもう一度検索したい場合（URLが変わらない）
     if (router.pathname === '/results') {
       const currentQ = normalizeQueryValue(router.query.q).trim();
-      if (trimmed === currentQ) {
+      if (trimmed === currentQ && router.asPath === next.url) {
         await runSearch({ query: trimmed });
         if (onSearch) onSearch();
         return;
       }
     }
 
-    const nextQuery = trimmed ? { q: trimmed } : {};
-    await router.push({ pathname: '/results', query: nextQuery });
+    await router.push(next.url);
     if (onSearch) onSearch();
   };
 

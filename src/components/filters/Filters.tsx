@@ -1,7 +1,7 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useGeoFilters } from '@/hooks/useGeoFilters';
-import { buildFilterUrl, evaluateKeywordUpgrade, parseUrl } from '@/lib/seo';
+import { buildSearchUrl } from '@/lib/seo';
 import { carsKeyFromCarsPath, getFreewordContext } from '@/lib/freewordSession';
 import type { Filters as FiltersType } from '@/types';
 
@@ -52,77 +52,9 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
 
     const effectiveQ = qFromContext || qFromUrl || qFromSession;
 
-    const selectedMakerSlug = (localFilters.makerSlug || '').trim();
-
-    // spec-seo.md の正規URL構造（/cars/...）では、feature と city/maker の同時構造化は定義されていない。
-    // そのため feature を含みつつ city/maker も選ばれている場合は、/cars に寄せず /results（noindex想定）で全条件を保持する。
-    const hasIncompatibleFeatureCombo =
-      !!(localFilters.featureSlug || '').trim() &&
-      (!!(localFilters.citySlug || '').trim() || !!selectedMakerSlug);
-
-    const buildResultsUrl = () => {
-      const params = new URLSearchParams();
-      if (effectiveQ) params.set('q', effectiveQ);
-      if (selectedMakerSlug) params.set('maker', selectedMakerSlug);
-      if (localFilters.prefSlug) params.set('pref', localFilters.prefSlug);
-      if (localFilters.citySlug) params.set('city', localFilters.citySlug);
-      if (localFilters.featureSlug) params.set('feature', localFilters.featureSlug);
-      if (localFilters.minMan) params.set('minMan', localFilters.minMan);
-      if (localFilters.maxMan) params.set('maxMan', localFilters.maxMan);
-      if (localFilters.priceChangedOnly) params.set('priceChangedOnly', 'true');
-      return `/results?${params.toString()}`;
-    };
-
-    // /results はUX用のクエリ検索URL: q をURLに残す（昇格できても filters がある前提で留める）
-    if (isResultsPage && effectiveQ) {
-      window.location.assign(buildResultsUrl());
-      return;
-    }
-
-    // feature + (city or maker) は /cars で表現できないので /results に落とす
-    if (hasIncompatibleFeatureCombo) {
-      window.location.assign(buildResultsUrl());
-      return;
-    }
-
-    const q = effectiveQ;
-
-    if (q && isCarsPage) {
-      // /cars 上で freeword を保持している場合の矛盾判定（最小実装）
-      const currentParsed = parseUrl(pathname, {});
-      const currentMakerSlug = currentParsed.makerSlug || '';
-
-      // 例: /cars/m-toyota/s-prius/ 上で maker=suzuki は矛盾 → /results に落とす
-      if (currentMakerSlug && selectedMakerSlug && currentMakerSlug !== selectedMakerSlug) {
-        window.location.assign(buildResultsUrl());
-        return;
-      }
-
-      // 矛盾しない: spec準拠の短URLに構造化（qは正規URLに載せない）
-      const { url } = buildFilterUrl({
-        makerSlug: localFilters.makerSlug,
-        prefSlug: localFilters.prefSlug,
-        citySlug: localFilters.citySlug,
-        featureSlug: localFilters.featureSlug,
-        minMan: localFilters.minMan,
-        maxMan: localFilters.maxMan,
-        priceChangedOnly: localFilters.priceChangedOnly,
-      });
-      window.location.assign(url);
-      return;
-    }
-
-    // freewordだが昇格できない（または /cars 以外）: /results に留めて q を保持
-    if (q) {
-      const upgrade = evaluateKeywordUpgrade(q);
-      if (!upgrade.canUpgrade) {
-        window.location.assign(buildResultsUrl());
-        return;
-      }
-    }
-
-    // キーワードなし: 従来どおり構造化URLへ
-    const { url } = buildFilterUrl({
+    // 遷移先の決定は1箇所に集約（specに完全一致のみ /cars、それ以外は /results に全条件保持）
+    const { url } = buildSearchUrl({
+      q: effectiveQ,
       makerSlug: localFilters.makerSlug,
       prefSlug: localFilters.prefSlug,
       citySlug: localFilters.citySlug,
@@ -178,7 +110,7 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
       </div>
 
       <div className="mb-2.5">
-        <label className="block text-xs text-muted mb-1.5">feature</label>
+        <label className="block text-xs text-muted mb-1.5">特徴</label>
         <select
           value={localFilters.featureSlug}
           onChange={(e) => setLocalFilters({ ...localFilters, featureSlug: e.target.value })}

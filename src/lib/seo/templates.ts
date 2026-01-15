@@ -187,22 +187,11 @@ export function generateSeoTexts(parsed: ParsedUrl, carData?: any): SeoTexts {
     case 'model': {
       const makerName = getMakerName(parsed.makerSlug);
       const modelName = parsed.modelSlug || '';
+      const modelDisplay = modelName ? ` ${modelName}` : '';
       return {
-        title: `${makerName} ${modelName}の中古車｜最新更新順の在庫一覧`,
-        h1: `${makerName} ${modelName}の中古車一覧`,
-        description: `${makerName} ${modelName}の中古車を最新更新順で掲載。価格や年式、装備などの詳細を確認できます。`,
-      };
-    }
-
-    // 5.1 /cars/p-{pref}/m-{maker}/s-{model}/ - 都道府県×メーカー×車種
-    case 'pref-model': {
-      const prefName = getPrefName(parsed.prefSlug);
-      const makerName = getMakerName(parsed.makerSlug);
-      const modelName = parsed.modelSlug || '';
-      return {
-        title: `${prefName}の${makerName} ${modelName}中古車｜最新更新順の在庫一覧`,
-        h1: `${prefName}の${makerName} ${modelName}中古車一覧`,
-        description: `${prefName}で販売中の${makerName} ${modelName}中古車を最新更新順で掲載。条件別に在庫を確認できます。`,
+        title: `${makerName}${modelDisplay}の中古車｜最新更新順で探せる中古車一覧`,
+        h1: `${makerName}${modelDisplay}の中古車一覧`,
+        description: `${makerName}${modelDisplay}の中古車を最新更新順で掲載。条件別に在庫を確認できます。`,
       };
     }
 

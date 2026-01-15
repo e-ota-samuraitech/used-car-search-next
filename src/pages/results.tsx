@@ -45,6 +45,7 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   //    重要: filters が付いている場合は /results に留める（UX用URL）。
   const hasFilters =
     !!normalizeQueryValue(urlQuery.maker).trim() ||
+    !!normalizeQueryValue(urlQuery.model).trim() ||
     !!normalizeQueryValue(urlQuery.pref).trim() ||
     !!normalizeQueryValue(urlQuery.city).trim() ||
     !!normalizeQueryValue(urlQuery.feature).trim() ||
@@ -68,6 +69,7 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
 
   // 2. 昇格できない → 検索を実行して表示（noindex）
   const makerSlug = normalizeQueryValue(urlQuery.maker).trim().toLowerCase();
+  const modelSlug = normalizeQueryValue(urlQuery.model).trim().toLowerCase();
   const prefSlug = normalizeQueryValue(urlQuery.pref).trim().toLowerCase();
   const citySlug = normalizeQueryValue(urlQuery.city).trim().toLowerCase();
   const featureSlug = normalizeQueryValue(urlQuery.feature).trim().toLowerCase();
@@ -85,6 +87,7 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
     maxMan,
     priceChangedOnly,
     makerSlug: makerSlug || undefined,
+    modelSlug: modelSlug || undefined,
     prefSlug: prefSlug || undefined,
     citySlug: citySlug || undefined,
     featureSlug: featureSlug || undefined,

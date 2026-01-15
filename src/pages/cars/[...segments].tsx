@@ -113,10 +113,7 @@ function isValidCarsSegments(segments: string[]): boolean {
 
   if (segments.length === 3) {
     const [a, b, c] = segments;
-    return (
-      (isPref(a) && isCity(b) && isMaker(c)) ||
-      (isPref(a) && isMaker(b) && isModel(c))
-    );
+    return isPref(a) && isCity(b) && isMaker(c);
   }
 
   return false;
