@@ -31,6 +31,8 @@ import {
 } from '@/lib/seo';
 import { executeSearchFromParsedUrl } from '@/lib/search';
 import { MockCarDataSource } from '@/server/search/dataSource/mockDataSource';
+import type { FeatureContent } from '@/lib/seo/featureContent';
+import { getFeatureContent } from '@/lib/seo/featureContent';
 
 function shouldEmitSeoDebugHeaders(): boolean {
   return process.env.NODE_ENV !== 'production' || process.env.SEO_DEBUG === '1';
@@ -55,6 +57,7 @@ interface CatchAllCarsPageProps {
   totalCount: number;
   pathname: string;
   car?: Car | null;
+  featureContent?: FeatureContent | null;
 }
 
 type SegmentsParam = string[] | string | undefined;
@@ -202,6 +205,11 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
 
     const searchResult = await executeSearchFromParsedUrl(parsed);
 
+    const featureContent =
+      parsed.type === 'feature' || parsed.type === 'pref-feature'
+        ? getFeatureContent(parsed.featureSlug)
+        : null;
+
     const seoResult = await evaluateSeo({
       pathname,
       query,
@@ -227,6 +235,7 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
         totalCount: searchResult.totalCount,
         pathname,
         car: null,
+        featureContent,
       },
     };
   } catch (error) {
@@ -237,7 +246,7 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
   }
 };
 
-export default function CatchAllCarsPage({ seo, cars, totalCount, car }: CatchAllCarsPageProps) {
+export default function CatchAllCarsPage({ seo, cars, totalCount, car, featureContent }: CatchAllCarsPageProps) {
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
 
   if (seo.urlType === 'detail') {
@@ -280,6 +289,12 @@ export default function CatchAllCarsPage({ seo, cars, totalCount, car }: CatchAl
             </div>
             <h1 className="text-2xl font-bold mb-3">{seo.h1}</h1>
             <p className="text-gray-600 mb-4 text-sm">{seo.description}</p>
+            {featureContent ? (
+              <section className="mt-4 border-t border-gray-100 pt-4">
+                <h2 className="text-base font-semibold mb-2">{featureContent.title}</h2>
+                <p className="text-gray-700 text-sm whitespace-pre-wrap leading-7">{featureContent.body}</p>
+              </section>
+            ) : null}
             <SearchBar variant="compact" />
           </div>
 
