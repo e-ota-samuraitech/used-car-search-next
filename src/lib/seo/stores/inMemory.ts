@@ -108,27 +108,71 @@ export function createInMemoryStoreRegistry(options?: {
 let defaultRegistry: SeoStoreRegistry | null = null;
 
 /**
+ * Cloud SQL モードが有効かどうかを判定
+ */
+function shouldUseCloudSql(): boolean {
+  if (process.env.SEO_ALLOWLIST_STORE !== 'cloudsql') {
+    return false;
+  }
+
+  // 必要な環境変数のチェック
+  const hasLocalDb = !!process.env.DATABASE_URL;
+  const hasCloudSql =
+    !!process.env.CLOUDSQL_CONNECTION_NAME &&
+    !!process.env.DB_USER &&
+    !!process.env.DB_PASS &&
+    !!process.env.DB_NAME;
+
+  if (!hasLocalDb && !hasCloudSql) {
+    console.warn(
+      '[getDefaultStoreRegistry] SEO_ALLOWLIST_STORE=cloudsql が設定されていますが、' +
+        'DB接続設定が不足しています。InMemory にフォールバックします。'
+    );
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * デフォルトのストアレジストリを取得（シングルトン）
  */
 export function getDefaultStoreRegistry(): SeoStoreRegistry {
   if (!defaultRegistry) {
-    // 初期ホワイトリストの例（本番環境ではDBから取得）
-    const initialWhitelistedPaths: Pathname[] = [
-      '/cars/',
-      '/cars/p-tokyo/',
-      '/cars/p-kanagawa/',
-      '/cars/p-kanagawa/c-yokohama/',
-      '/cars/p-osaka/',
-      '/cars/m-toyota/',
-      '/cars/m-honda/',
-      '/cars/m-nissan/',
-      '/cars/f-4wd/',
-      '/cars/f-hybrid/',
-    ];
+    // Cloud SQL モードかどうか判定
+    if (shouldUseCloudSql()) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getDefaultStoreRegistry] Cloud SQL モードで初期化');
+      }
 
-    defaultRegistry = createInMemoryStoreRegistry({
-      initialWhitelistedPaths,
-    });
+      // pg モジュールを含むため、動的にロード（サーバーサイドでのみ実行される）
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { CloudSqlSeoAllowlistStore } = require('./cloudSql') as typeof import('./cloudSql');
+
+      defaultRegistry = {
+        stateStore: new InMemorySeoStateStore(),
+        allowlistStore: new CloudSqlSeoAllowlistStore(),
+      };
+    } else {
+      // InMemory モード（フォールバック含む）
+      // 初期ホワイトリストの例（開発・テスト用）
+      const initialWhitelistedPaths: Pathname[] = [
+        '/cars/',
+        '/cars/p-tokyo/',
+        '/cars/p-kanagawa/',
+        '/cars/p-kanagawa/c-yokohama/',
+        '/cars/p-osaka/',
+        '/cars/m-toyota/',
+        '/cars/m-honda/',
+        '/cars/m-nissan/',
+        '/cars/f-4wd/',
+        '/cars/f-hybrid/',
+      ];
+
+      defaultRegistry = createInMemoryStoreRegistry({
+        initialWhitelistedPaths,
+      });
+    }
   }
 
   return defaultRegistry;
