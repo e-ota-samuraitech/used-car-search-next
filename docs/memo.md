@@ -16,3 +16,7 @@
 - 既存処理と分離で新規フォルダを作成し、
 - SEO関連モジュールとして作って、現状の画面レンダリングの後を呼び出す。
 - noindex, indexを判定する処理
+# デプロイコマンド
+```
+gcloud run deploy u-carsearch --source . --allow-unauthenticated
+```

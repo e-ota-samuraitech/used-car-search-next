@@ -15,7 +15,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm ci:*)",
       "Bash(npm install)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx tsx:*)"
     ]
   }
 }
