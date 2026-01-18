@@ -155,6 +155,18 @@ export function getSearchClient(): SearchClient {
   if (cachedClient) return cachedClient;
 
   const impl = (process.env.SEARCH_CLIENT ?? 'mock').toLowerCase();
+
+  if (impl === 'vertex') {
+    const servingConfig = (process.env.VERTEX_SERVING_CONFIG ?? '').trim();
+    if (!servingConfig) {
+      throw new Error('VERTEX_SERVING_CONFIG is required when SEARCH_CLIENT=vertex');
+    }
+    // Dynamic import to avoid bundling @google-cloud/discoveryengine in client
+    const { VertexSearchClient } = require('./vertex/vertexSearchClient');
+    cachedClient = new VertexSearchClient(servingConfig) as SearchClient;
+    return cachedClient;
+  }
+
   if (impl === 'api') {
     const baseUrl = (process.env.SEARCH_API_BASE_URL ?? '').trim();
     if (!baseUrl) {

@@ -16,7 +16,9 @@
       "Bash(npm ci:*)",
       "Bash(npm install)",
       "Bash(npx tsc:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(gcloud auth print-access-token:*)",
+      "Bash(npm view:*)"
     ]
   }
 }

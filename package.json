@@ -12,6 +12,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google-cloud/discoveryengine": "^2.5.2",
     "next": "^14",
     "pg": "^8.11.0",
     "react": "^18",
