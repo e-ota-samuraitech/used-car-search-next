@@ -6,7 +6,8 @@
 
 | ファイル | 形式 | 説明 |
 |---------|------|------|
-| `cars_dummy.jsonl` | NDJSON | ダミー車両データ（1行1JSON） |
+| `cars_dummy.jsonl` | NDJSON | ダミー車両データ（1行1JSON、Car型互換） |
+| `cars_dummy.discoveryengine.jsonl` | NDJSON | Discovery Engine 取り込み用（変換後） |
 
 ## データ仕様
 
@@ -72,14 +73,40 @@ npx tsx tools/generate-dummy-data.ts 1000
 - 外部通信なし
 - `src/types/index.ts` の `Car` 型に完全互換
 
+## Discovery Engine 用変換
+
+Vertex AI Search (Discovery Engine) の Data Store に取り込むには、
+ドキュメントID付きの形式に変換する必要があります。
+
+### 変換スクリプト実行
+
+```bash
+npx tsx tools/convert-for-discovery-engine.ts
+```
+
+### 変換形式
+
+入力（cars_dummy.jsonl）:
+```json
+{"id":"car-000001","maker":"スバル",...}
+```
+
+出力（cars_dummy.discoveryengine.jsonl）:
+```json
+{"id":"car-000001","structData":{"id":"car-000001","maker":"スバル",...}}
+```
+
+- `id`: ドキュメントID（Discovery Engine が認識）
+- `structData`: 元のJSONをそのまま格納（フィールド変更なし）
+
 ## GCSへのアップロード
 
-生成したJSONLファイルをGoogle Cloud Storageにアップロードし、
+変換後のJSONLファイルをGoogle Cloud Storageにアップロードし、
 Vertex AI SearchのData Storeに取り込みます。
 
 ```bash
-# GCSバケットにアップロード
-gsutil cp data/vertex/cars_dummy.jsonl gs://<YOUR_BUCKET>/vertex/cars_dummy.jsonl
+# Discovery Engine 用ファイルをアップロード
+gsutil cp data/vertex/cars_dummy.discoveryengine.jsonl gs://<YOUR_BUCKET>/vertex/cars_dummy.discoveryengine.jsonl
 ```
 
 ## Phase A での利用
