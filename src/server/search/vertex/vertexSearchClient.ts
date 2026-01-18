@@ -2,12 +2,24 @@
  * Vertex AI Search (Discovery Engine) を使用した SearchClient 実装
  */
 
-import { SearchServiceClient } from '@google-cloud/discoveryengine';
+import { SearchServiceClient, protos } from '@google-cloud/discoveryengine';
 import type { Car } from '@/types';
 import type { SearchClient, SearchQuery, SearchResult, SearchSort } from '../searchClient';
 import { DEFAULT_PAGE_SIZE } from '../config';
 import { buildFilter } from './filterBuilder';
 import { mapStructDataToCar, getMissingRequiredFields } from './responseMapper';
+
+type DiscoverySearchRequest = Parameters<SearchServiceClient['search']>[0];
+
+type DiscoverySearchResultItem = {
+  document?: {
+    structData?: unknown;
+  };
+};
+
+type DiscoverySearchResponse = {
+  totalSize?: unknown;
+};
 
 /**
  * pageSize を 1..100 に clamp
@@ -57,6 +69,83 @@ function shouldLogDebug(): boolean {
   return process.env.NODE_ENV !== 'production' || process.env.LOG_LEVEL === 'debug';
 }
 
+function normalizeQueryString(value: string | undefined): string {
+  return (value ?? '').trim();
+}
+
+function getEnvString(name: string): string {
+  return (process.env[name] ?? '').trim();
+}
+
+function parseLanguageCode(): string | undefined {
+  // Default to ja-JP, but allow disabling by setting empty string.
+  const raw = getEnvString('VERTEX_LANGUAGE_CODE');
+  if (raw) return raw;
+  return 'ja-JP';
+}
+
+function parseQueryExpansionCondition(): protos.google.cloud.discoveryengine.v1.SearchRequest.QueryExpansionSpec.Condition | undefined {
+  const raw = getEnvString('VERTEX_QUERY_EXPANSION_CONDITION');
+  const value = raw.toUpperCase();
+  if (!value) {
+    return protos.google.cloud.discoveryengine.v1.SearchRequest.QueryExpansionSpec.Condition.DISABLED;
+  }
+
+  switch (value) {
+    case 'DISABLED':
+      return protos.google.cloud.discoveryengine.v1.SearchRequest.QueryExpansionSpec.Condition.DISABLED;
+    case 'AUTO':
+      return protos.google.cloud.discoveryengine.v1.SearchRequest.QueryExpansionSpec.Condition.AUTO;
+    case 'UNSPECIFIED':
+    case 'CONDITION_UNSPECIFIED':
+      return protos.google.cloud.discoveryengine.v1.SearchRequest.QueryExpansionSpec.Condition.CONDITION_UNSPECIFIED;
+    case 'NONE':
+    case 'OFF':
+      return undefined;
+    default:
+      // Unknown value -> keep safe default (disabled)
+      return protos.google.cloud.discoveryengine.v1.SearchRequest.QueryExpansionSpec.Condition.DISABLED;
+  }
+}
+
+function parseSpellCorrectionMode(): protos.google.cloud.discoveryengine.v1.SearchRequest.SpellCorrectionSpec.Mode | undefined {
+  const raw = getEnvString('VERTEX_SPELL_CORRECTION_MODE');
+  const value = raw.toUpperCase();
+  if (!value) {
+    return protos.google.cloud.discoveryengine.v1.SearchRequest.SpellCorrectionSpec.Mode.SUGGESTION_ONLY;
+  }
+
+  switch (value) {
+    case 'SUGGESTION_ONLY':
+      return protos.google.cloud.discoveryengine.v1.SearchRequest.SpellCorrectionSpec.Mode.SUGGESTION_ONLY;
+    case 'AUTO':
+      return protos.google.cloud.discoveryengine.v1.SearchRequest.SpellCorrectionSpec.Mode.AUTO;
+    case 'UNSPECIFIED':
+    case 'MODE_UNSPECIFIED':
+      return protos.google.cloud.discoveryengine.v1.SearchRequest.SpellCorrectionSpec.Mode.MODE_UNSPECIFIED;
+    case 'NONE':
+    case 'OFF':
+      return undefined;
+    default:
+      // Unknown value -> keep safe default (suggestion only)
+      return protos.google.cloud.discoveryengine.v1.SearchRequest.SpellCorrectionSpec.Mode.SUGGESTION_ONLY;
+  }
+}
+
+function isInvalidArgumentError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as Record<string, unknown>;
+
+  // gRPC INVALID_ARGUMENT is code=3
+  if (typeof e.code === 'number' && e.code === 3) return true;
+
+  // Some clients surface HTTP status
+  if (typeof e.status === 'number' && e.status === 400) return true;
+
+  const message = typeof e.message === 'string' ? e.message : '';
+  return message.includes('INVALID_ARGUMENT') || message.includes('InvalidArgument') || message.includes('400');
+}
+
 export class VertexSearchClient implements SearchClient {
   private readonly client: SearchServiceClient;
   private readonly servingConfig: string;
@@ -73,13 +162,43 @@ export class VertexSearchClient implements SearchClient {
     const filter = buildFilter(query);
     const orderBy = sortToOrderBy(query.sort);
 
+    const q = normalizeQueryString(query.q);
+    const shouldApplyQueryTuning = q.length > 0;
+
+    const languageCode = shouldApplyQueryTuning ? parseLanguageCode() : undefined;
+    const queryExpansionCondition = shouldApplyQueryTuning ? parseQueryExpansionCondition() : undefined;
+    const spellCorrectionMode = shouldApplyQueryTuning ? parseSpellCorrectionMode() : undefined;
+
+    const baseRequest: DiscoverySearchRequest = {
+      servingConfig: this.servingConfig,
+      query: q,
+      pageSize,
+      offset,
+      filter,
+      orderBy,
+    };
+
+    const tunedRequest: DiscoverySearchRequest = {
+      ...baseRequest,
+      ...(languageCode ? { languageCode } : {}),
+      ...(queryExpansionCondition !== undefined
+        ? { queryExpansionSpec: { condition: queryExpansionCondition } }
+        : {}),
+      ...(spellCorrectionMode !== undefined
+        ? { spellCorrectionSpec: { mode: spellCorrectionMode } }
+        : {}),
+    };
+
     if (shouldLogDebug()) {
       console.log('[VertexSearchClient] search request:', {
-        query: query.q ?? '',
+        query: q,
         pageSize,
         offset,
         filter,
         orderBy,
+        languageCode: languageCode ?? '(none)',
+        queryExpansionCondition: queryExpansionCondition ?? '(none)',
+        spellCorrectionMode: spellCorrectionMode ?? '(none)',
       });
     }
 
@@ -87,14 +206,25 @@ export class VertexSearchClient implements SearchClient {
 
     try {
       // search() returns [results[], request, response]
-      const [results, , response] = await this.client.search({
-        servingConfig: this.servingConfig,
-        query: query.q ?? '',
-        pageSize,
-        offset,
-        filter,
-        orderBy,
-      });
+      let results: DiscoverySearchResultItem[];
+      let response: DiscoverySearchResponse | undefined;
+
+      try {
+        const [r, , resp] = await this.client.search(tunedRequest);
+        results = r as unknown as DiscoverySearchResultItem[];
+        response = resp as unknown as DiscoverySearchResponse | undefined;
+      } catch (error) {
+        // If query tuning fields are rejected (e.g., INVALID_ARGUMENT), retry once without them.
+        const usedTuningFields = tunedRequest !== baseRequest && shouldApplyQueryTuning;
+        if (usedTuningFields && isInvalidArgumentError(error)) {
+          console.warn('[VertexSearchClient] search request rejected (invalid argument). Retrying without query tuning fields.');
+          const [r, , resp] = await this.client.search(baseRequest);
+          results = r as unknown as DiscoverySearchResultItem[];
+          response = resp as unknown as DiscoverySearchResponse | undefined;
+        } else {
+          throw error;
+        }
+      }
 
       const elapsed = Date.now() - startTime;
 
