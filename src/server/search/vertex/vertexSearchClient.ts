@@ -13,8 +13,11 @@ type DiscoverySearchRequest = Parameters<SearchServiceClient['search']>[0];
 
 type DiscoverySearchResultItem = {
   document?: {
+    name?: string;
     structData?: unknown;
   };
+  // Discovery Engine may return relevance/model scores
+  modelScores?: Record<string, { values?: number[] }>;
 };
 
 type DiscoverySearchResponse = {
@@ -146,6 +149,45 @@ function isInvalidArgumentError(error: unknown): boolean {
   return message.includes('INVALID_ARGUMENT') || message.includes('InvalidArgument') || message.includes('400');
 }
 
+/**
+ * VERTEX_STRICT_MODEL_MATCH 環境変数を読み取り
+ * "1" or "true" で有効
+ */
+function isStrictModelMatchEnabled(): boolean {
+  const raw = getEnvString('VERTEX_STRICT_MODEL_MATCH').toLowerCase();
+  return raw === '1' || raw === 'true';
+}
+
+/**
+ * クエリが「モデル名っぽい」かを判定
+ * - 空白なし
+ * - 長さ 2〜10
+ * - 記号は - のみ許可（N-BOX 対応）
+ */
+function isModelLikeQuery(q: string): boolean {
+  if (!q) return false;
+  // 空白を含む場合は複合クエリとみなす
+  if (/\s/.test(q)) return false;
+  // 長さチェック
+  if (q.length < 2 || q.length > 10) return false;
+  // 許可する文字: ひらがな、カタカナ、漢字、英数字、ハイフン
+  // 禁止: 空白、その他記号
+  if (!/^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\uFF66-\uFF9Fa-zA-Z0-9\-ー]+$/.test(q)) return false;
+  return true;
+}
+
+/**
+ * strict フィルタを組み立て（既存 filter に model: ANY("<q>") を追加）
+ */
+function buildStrictFilter(existingFilter: string | undefined, modelName: string): string {
+  const escaped = modelName.replace(/"/g, '\\"');
+  const modelFilter = `model: ANY("${escaped}")`;
+  if (existingFilter) {
+    return `${existingFilter} AND ${modelFilter}`;
+  }
+  return modelFilter;
+}
+
 export class VertexSearchClient implements SearchClient {
   private readonly client: SearchServiceClient;
   private readonly servingConfig: string;
@@ -189,8 +231,14 @@ export class VertexSearchClient implements SearchClient {
         : {}),
     };
 
+    // strict 検索の判定
+    const strictEnabled = isStrictModelMatchEnabled();
+    const shouldTryStrict = strictEnabled && q.length > 0 && isModelLikeQuery(q);
+    const strictFilter = shouldTryStrict ? buildStrictFilter(filter, q) : undefined;
+
     if (shouldLogDebug()) {
       console.log('[VertexSearchClient] search request:', {
+        servingConfig: this.servingConfig,
         query: q,
         pageSize,
         offset,
@@ -199,6 +247,9 @@ export class VertexSearchClient implements SearchClient {
         languageCode: languageCode ?? '(none)',
         queryExpansionCondition: queryExpansionCondition ?? '(none)',
         spellCorrectionMode: spellCorrectionMode ?? '(none)',
+        strictEnabled,
+        shouldTryStrict,
+        strictFilter: strictFilter ?? '(none)',
       });
     }
 
@@ -206,23 +257,70 @@ export class VertexSearchClient implements SearchClient {
 
     try {
       // search() returns [results[], request, response]
-      let results: DiscoverySearchResultItem[];
-      let response: DiscoverySearchResponse | undefined;
+      let results: DiscoverySearchResultItem[] = [];
+      let response: DiscoverySearchResponse | undefined = undefined;
+      let usedStrictSearch = false;
 
-      try {
-        const [r, , resp] = await this.client.search(tunedRequest);
-        results = r as unknown as DiscoverySearchResultItem[];
-        response = resp as unknown as DiscoverySearchResponse | undefined;
-      } catch (error) {
-        // If query tuning fields are rejected (e.g., INVALID_ARGUMENT), retry once without them.
-        const usedTuningFields = tunedRequest !== baseRequest && shouldApplyQueryTuning;
-        if (usedTuningFields && isInvalidArgumentError(error)) {
-          console.warn('[VertexSearchClient] search request rejected (invalid argument). Retrying without query tuning fields.');
-          const [r, , resp] = await this.client.search(baseRequest);
+      // strict 検索を先に試す（有効 & モデル名っぽい場合）
+      if (shouldTryStrict && strictFilter) {
+        const strictRequest: DiscoverySearchRequest = {
+          ...tunedRequest,
+          filter: strictFilter,
+        };
+
+        try {
+          if (shouldLogDebug()) {
+            console.log('[VertexSearchClient] trying strict search with filter:', strictFilter);
+          }
+
+          const [r, , resp] = await this.client.search(strictRequest);
+          const strictResults = r as unknown as DiscoverySearchResultItem[];
+          const strictResponse = resp as unknown as DiscoverySearchResponse | undefined;
+
+          // 1件以上あれば strict 検索結果を採用
+          if (strictResults.length > 0) {
+            results = strictResults;
+            response = strictResponse;
+            usedStrictSearch = true;
+            if (shouldLogDebug()) {
+              console.log('[VertexSearchClient] strict search succeeded:', {
+                resultsCount: strictResults.length,
+              });
+            }
+          } else {
+            // 0件なら通常検索にフォールバック
+            if (shouldLogDebug()) {
+              console.log('[VertexSearchClient] strict search returned 0 results, falling back to normal search');
+            }
+          }
+        } catch (strictError) {
+          // INVALID_ARGUMENT（model が filterable でない等）→ warn して通常検索へ
+          if (isInvalidArgumentError(strictError)) {
+            console.warn('[VertexSearchClient] strict search failed (INVALID_ARGUMENT), falling back to normal search. Filter was:', strictFilter);
+          } else {
+            // その他のエラーは warn だけ出して通常検索へ
+            console.warn('[VertexSearchClient] strict search failed, falling back to normal search:', strictError);
+          }
+        }
+      }
+
+      // strict 検索を使わなかった/失敗した場合、通常検索を実行
+      if (!usedStrictSearch) {
+        try {
+          const [r, , resp] = await this.client.search(tunedRequest);
           results = r as unknown as DiscoverySearchResultItem[];
           response = resp as unknown as DiscoverySearchResponse | undefined;
-        } else {
-          throw error;
+        } catch (error) {
+          // If query tuning fields are rejected (e.g., INVALID_ARGUMENT), retry once without them.
+          const usedTuningFields = tunedRequest !== baseRequest && shouldApplyQueryTuning;
+          if (usedTuningFields && isInvalidArgumentError(error)) {
+            console.warn('[VertexSearchClient] search request rejected (invalid argument). Retrying without query tuning fields.');
+            const [r, , resp] = await this.client.search(baseRequest);
+            results = r as unknown as DiscoverySearchResultItem[];
+            response = resp as unknown as DiscoverySearchResponse | undefined;
+          } else {
+            throw error;
+          }
         }
       }
 
@@ -283,11 +381,29 @@ export class VertexSearchClient implements SearchClient {
       }
 
       if (shouldLogDebug()) {
+        // 上位3件の詳細をログ出力（原因確定用）
+        const top3Details = results.slice(0, 3).map((result, idx) => {
+          const doc = result.document;
+          const structData = doc ? extractStructData(doc.structData) : null;
+          const data = structData as Record<string, unknown> | null;
+          return {
+            index: idx,
+            documentName: doc?.name ?? '(no name)',
+            id: data?.id ?? '(no id)',
+            maker: data?.maker ?? '(no maker)',
+            model: data?.model ?? '(no model)',
+            title: data?.title ?? '(no title)',
+            modelScores: result.modelScores ?? '(no scores)',
+          };
+        });
+
         console.log('[VertexSearchClient] search response:', {
+          servingConfig: this.servingConfig,
           totalSize: totalCount,
           resultsCount: results.length,
           itemsCount: items.length,
           elapsedMs: elapsed,
+          top3Details,
         });
       }
 
