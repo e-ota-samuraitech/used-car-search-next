@@ -55,7 +55,7 @@ export interface Estimate {
   createdAt: number;
 }
 
-export type SortBy = 'live' | 'updated_desc' | 'price_asc' | 'price_desc';
+export type SortBy = 'relevance' | 'live' | 'updated_desc' | 'price_asc' | 'price_desc';
 
 export interface Shop {
   name: string;

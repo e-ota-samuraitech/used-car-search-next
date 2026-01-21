@@ -7,8 +7,9 @@
  */
 
 import { GetServerSideProps } from 'next';
-import { useState, ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, ChangeEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import Layout from '@/components/common/Layout';
 import { SeoHead } from '@/components/seo/SeoHead';
 import SearchBar from '@/components/results/SearchBar';
@@ -18,6 +19,7 @@ import type { Car, SortBy } from '@/types';
 import type { AbsoluteUrl, Pathname } from '@/lib/seo';
 import { buildAbsoluteUrl, normalizeQueryValue, evaluateQueryUpgrade, getBaseUrl } from '@/lib/seo';
 import type { SearchQuery } from '@/server/search/searchClient';
+import { useApp } from '@/context/AppContext';
 
 // ============================================
 // ページProps
@@ -125,6 +127,9 @@ function sortCars(cars: Car[], sortBy: SortBy): Car[] {
   const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
 
   switch (sortBy) {
+    case 'relevance':
+      // Preserve Vertex order (relevance). Return a copy to avoid shared mutations.
+      return sorted;
     case 'price_asc':
       return sorted.sort((a, b) => (a.priceYen || 0) - (b.priceYen || 0));
     case 'price_desc':
@@ -154,11 +159,85 @@ function sortCars(cars: Car[], sortBy: SortBy): Car[] {
 // ============================================
 
 export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: ResultsPageProps) {
+  const router = useRouter();
+  const app = useApp();
   const [sortBy, setSortBy] = useState<SortBy>('live');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
 
-  const sortedCars = sortCars(cars, sortBy);
+  const sortedCars = useMemo(() => sortCars(cars, sortBy), [cars, sortBy]);
+
+  const debugEnabled = normalizeQueryValue(router.query.debug).trim() === '1';
+  const urlQ = normalizeQueryValue(router.query.q).trim();
+
+  const didInitSort = useRef(false);
+
+  const parseSortBy = (raw: string): SortBy | null => {
+    const value = raw.trim();
+    const allowed: SortBy[] = ['relevance', 'live', 'updated_desc', 'price_asc', 'price_desc'];
+    return (allowed as readonly string[]).includes(value) ? (value as SortBy) : null;
+  };
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (didInitSort.current) return;
+    didInitSort.current = true;
+
+    const rawSort = normalizeQueryValue(router.query.sort).trim();
+    const sortFromUrl = rawSort ? parseSortBy(rawSort) : null;
+
+    // Priority: URL sort param > keyword search default > legacy recommended.
+    if (sortFromUrl) {
+      setSortBy(sortFromUrl);
+      return;
+    }
+    if (urlQ) {
+      setSortBy('relevance');
+      return;
+    }
+    setSortBy('live');
+  }, [router.isReady, router.query.sort, urlQ]);
+
+  const renderSource: 'props' | 'context' | 'fallback' = 'props';
+  const renderCars = sortedCars;
+
+  const top3 = (list: Car[]) =>
+    list.slice(0, 3).map((c) => ({ id: c.id, maker: c.maker, model: c.model }));
+
+  useEffect(() => {
+    if (!debugEnabled) return;
+
+    const payload = {
+      pathname: router.pathname,
+      asPath: router.asPath,
+      urlQ,
+      propsQuery: query,
+      propsCarsCount: cars.length,
+      propsCarsTop3: top3(cars),
+      sortedCarsCount: sortedCars.length,
+      sortedCarsTop3: top3(sortedCars),
+      ctxQuery: app.query,
+      ctxResultsCount: app.results.length,
+      ctxResultsTop3: top3(app.results),
+      renderSource,
+      renderCarsCount: renderCars.length,
+      renderCarsTop3: top3(renderCars),
+    };
+
+    // eslint-disable-next-line no-console
+    console.log('[DEBUG_RESULTS]', payload);
+  }, [
+    debugEnabled,
+    router.pathname,
+    router.asPath,
+    urlQ,
+    query,
+    cars,
+    sortedCars,
+    app.query,
+    app.results,
+    renderCars,
+  ]);
 
   const handleSortChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setSortBy(e.target.value as SortBy);
@@ -175,6 +254,26 @@ export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: R
 
       <Layout showFilters={false}>
         <div className="w-full">
+          {debugEnabled && (
+            <div className="mb-3 border border-amber-300 rounded-xl bg-amber-50 p-3 text-xs text-gray-800">
+              <div className="font-extrabold mb-1">DEBUG: /results</div>
+              <div>pathname: {router.pathname}</div>
+              <div>asPath: {router.asPath}</div>
+              <div>urlQ: {urlQ || '(empty)'}</div>
+              <div className="mt-2 font-extrabold">props</div>
+              <div>propsCarsCount: {cars.length}</div>
+              <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(top3(cars), null, 2)}</pre>
+              <div className="mt-2 font-extrabold">context</div>
+              <div>ctxQuery: {app.query || '(empty)'}</div>
+              <div>ctxResultsCount: {app.results.length}</div>
+              <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(top3(app.results), null, 2)}</pre>
+              <div className="mt-2 font-extrabold">render</div>
+              <div>renderSource: {renderSource}</div>
+              <div>renderCarsCount: {renderCars.length}</div>
+              <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(top3(renderCars), null, 2)}</pre>
+            </div>
+          )}
+
           {/* ページ上部の検索バー */}
           <div className="mb-3 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden p-3">
             <div className="text-xs text-muted mb-2">
@@ -257,6 +356,7 @@ export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: R
                       aria-label="並び替え"
                       className="h-[34px] border border-gray-200 rounded-full px-2.5 bg-white text-sm"
                     >
+                      <option value="relevance">関連度順</option>
                       <option value="live">おすすめ（価格変動→新規→更新）</option>
                       <option value="updated_desc">更新が新しい順</option>
                       <option value="price_asc">価格が安い順</option>
@@ -267,7 +367,7 @@ export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: R
 
                 {/* 検索結果リスト */}
                 {sortedCars.length > 0 ? (
-                  <ResultsList results={sortedCars} />
+                  <ResultsList results={renderCars} debugEnabled={debugEnabled} debugSource={renderSource} />
                 ) : (
                   <div className="p-8 text-center text-gray-500">
                     該当する車両が見つかりませんでした

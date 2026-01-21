@@ -4,6 +4,20 @@ import { findShopByName as findShopByNameLib } from '@/lib/mockShops';
 import { computeLiveScore } from '@/utils/helpers';
 import type { Car, Filters, Estimate, SortBy, Shop } from '@/types';
 
+function truncateForLog(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, Math.max(0, maxLen - 3))}...`;
+}
+
+async function readMaybeHtmlSnippet(response: Response, maxLen: number): Promise<string> {
+  try {
+    const text = await response.text();
+    return truncateForLog(text.replace(/\s+/g, ' ').trim(), maxLen);
+  } catch {
+    return '';
+  }
+}
+
 interface AppContextType {
   query: string;
   setQuery: (query: string) => void;
@@ -93,8 +107,27 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       // API呼び出し
       const response = await fetch(`/api/search?${params.toString()}`);
 
-      if (!response.ok) {
-        throw new Error('Search API failed');
+      const contentType = response.headers.get('content-type') || '';
+      const looksJson = contentType.toLowerCase().includes('application/json');
+      const looksIapBlocked =
+        response.redirected ||
+        response.status === 0 ||
+        response.status === 302 ||
+        response.status === 401 ||
+        response.status === 403;
+
+      if (!response.ok || !looksJson || looksIapBlocked) {
+        const snippet = looksJson ? '' : await readMaybeHtmlSnippet(response, 200);
+        const details = {
+          ok: response.ok,
+          status: response.status,
+          redirected: response.redirected,
+          url: response.url,
+          contentType,
+          snippet,
+        };
+        console.warn('Search API returned non-JSON or auth redirect; keeping existing results.', details);
+        throw new Error('Search API returned non-JSON or requires auth');
       }
 
       const data = await response.json();
@@ -114,9 +147,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       setResults(sorted);
       setTotalCount(count);
     } catch (error) {
-      console.error('Search error:', error);
-      setResults([]);
-      setTotalCount(0);
+      // Important: do not wipe out existing results on client fetch failure (e.g. IAP 302/HTML).
+      console.warn('Search error (kept existing results):', error);
     }
   };
 

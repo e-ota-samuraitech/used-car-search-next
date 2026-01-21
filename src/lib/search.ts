@@ -211,8 +211,36 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
 
       const response = await fetch(`/api/search?${queryParams.toString()}`);
 
-      if (!response.ok) {
-        throw new Error('Search API failed');
+      const contentType = response.headers.get('content-type') || '';
+      const looksJson = contentType.toLowerCase().includes('application/json');
+      const looksIapBlocked =
+        response.redirected ||
+        response.status === 0 ||
+        response.status === 302 ||
+        response.status === 401 ||
+        response.status === 403;
+
+      if (!response.ok || !looksJson || looksIapBlocked) {
+        let snippet = '';
+        if (!looksJson) {
+          try {
+            const text = await response.text();
+            snippet = text.replace(/\s+/g, ' ').trim();
+            snippet = snippet.length > 200 ? `${snippet.slice(0, 197)}...` : snippet;
+          } catch {
+            // ignore
+          }
+        }
+
+        console.warn('Search API returned non-JSON or auth redirect.', {
+          ok: response.ok,
+          status: response.status,
+          redirected: response.redirected,
+          url: response.url,
+          contentType,
+          snippet,
+        });
+        throw new Error('Search API returned non-JSON or requires auth');
       }
 
       const data: unknown = await response.json();

@@ -3,9 +3,11 @@ import type { Car } from '@/types';
 
 interface ResultsListProps {
   results: Car[];
+  debugEnabled?: boolean;
+  debugSource?: 'props' | 'context' | 'fallback';
 }
 
-const ResultsList = ({ results }: ResultsListProps) => {
+const ResultsList = ({ results, debugEnabled = false, debugSource = 'props' }: ResultsListProps) => {
   if (!results || results.length === 0) {
     return (
       <div className="p-3">
@@ -19,7 +21,7 @@ const ResultsList = ({ results }: ResultsListProps) => {
   return (
     <div className="p-3 grid grid-cols-1 gap-2.5">
       {results.map(car => (
-        <ResultCard key={car.id} car={car} />
+        <ResultCard key={car.id} car={car} debugEnabled={debugEnabled} debugSource={debugSource} />
       ))}
     </div>
   );

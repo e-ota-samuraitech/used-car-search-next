@@ -10,13 +10,22 @@ interface SearchBarProps {
 }
 
 const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
-  const { query, setQuery, runSearch, filters } = useApp();
-  const [localQuery, setLocalQuery] = useState(query);
+  const { query, setQuery, filters } = useApp();
   const router = useRouter();
+  const urlQ = normalizeQueryValue(router.query.q).trim();
+  const [localQuery, setLocalQuery] = useState(urlQ || query);
 
   useEffect(() => {
-    setLocalQuery(query);
-  }, [query]);
+    // Prefer URL q (direct access /results?q=...) to avoid empty input.
+    // Fallback to context query for pages without ?q.
+    if (!router.isReady) return;
+
+    const next = urlQ || query;
+    setLocalQuery(next);
+    if (urlQ && urlQ !== query) {
+      setQuery(urlQ);
+    }
+  }, [router.isReady, urlQ, query, setQuery]);
 
   const handleSearch = async () => {
     const trimmed = localQuery.trim();
@@ -56,8 +65,9 @@ const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
     if (router.pathname === '/results') {
       const currentQ = normalizeQueryValue(router.query.q).trim();
       if (trimmed === currentQ && router.asPath === next.url) {
-        await runSearch({ query: trimmed });
-        if (onSearch) onSearch();
+        // Same URL: avoid /api/search (can be blocked by IAP) and force SSR refresh.
+        // router.push/replace may not re-run SSR on identical URL, so do a full reload.
+        window.location.assign(next.url);
         return;
       }
     }

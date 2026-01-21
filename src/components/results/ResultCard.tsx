@@ -5,9 +5,11 @@ import type { Car } from '@/types';
 
 interface ResultCardProps {
   car: Car;
+  debugEnabled?: boolean;
+  debugSource?: 'props' | 'context' | 'fallback';
 }
 
-const ResultCard = ({ car }: ResultCardProps) => {
+const ResultCard = ({ car, debugEnabled = false, debugSource = 'props' }: ResultCardProps) => {
   const router = useRouter();
 
   const delta = car.priceYen - car.prevPriceYen;
@@ -30,6 +32,8 @@ const ResultCard = ({ car }: ResultCardProps) => {
       onClick={handleCardClick}
       role="button"
       tabIndex={0}
+      data-debug-source={debugEnabled ? debugSource : undefined}
+      data-debug-id={debugEnabled ? car.id : undefined}
       onKeyDown={(e) => {
         if (e.key === 'Enter') handleCardClick();
       }}
@@ -41,6 +45,11 @@ const ResultCard = ({ car }: ResultCardProps) => {
         画像
       </div>
       <div>
+        {debugEnabled && (
+          <div className="mb-1 text-[10px] text-gray-500">
+            source: {debugSource} / id: {car.id}
+          </div>
+        )}
         <h4 className="m-0 mb-1 text-sm font-extrabold leading-tight">
           {car.maker} {car.model}（{car.year}）
         </h4>
