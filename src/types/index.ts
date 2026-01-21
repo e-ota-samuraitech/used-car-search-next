@@ -47,6 +47,16 @@ export interface Filters {
 
 export interface Estimate {
   carId: string;
+  carSnapshot?: {
+    id: string;
+    maker: string;
+    model: string;
+    year: number;
+    priceYen: number;
+    region: string;
+    pref: string;
+    city: string;
+  };
   name: string;
   email: string;
   tel: string;

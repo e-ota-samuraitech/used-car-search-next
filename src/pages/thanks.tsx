@@ -7,6 +7,7 @@ import { yen } from '@/utils/helpers';
 export default function ThanksPage() {
   const router = useRouter();
   const { estimate, findCar, results, runSearch } = useApp();
+  const carSnapshot = estimate?.carSnapshot;
   const car = estimate ? findCar(estimate.carId) : null;
 
   const handleGoResults = () => {
@@ -33,27 +34,29 @@ export default function ThanksPage() {
             <div className="border border-gray-200 rounded-[14px] p-3 bg-white m-3">
               <div className="font-extrabold mb-1.5">申し込み内容</div>
 
-              {estimate && car ? (
+              {estimate && (carSnapshot || car) ? (
                 <>
                   <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
                     <div className="text-muted">車両</div>
-                    <div>{car.maker} {car.model}（{car.year}）</div>
+                    <div>
+                      {(carSnapshot?.maker ?? car?.maker)} {(carSnapshot?.model ?? car?.model)}（{(carSnapshot?.year ?? car?.year)}）
+                    </div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
                     <div className="text-muted">価格</div>
-                    <div>¥{yen(car.priceYen)}</div>
+                    <div>¥{yen((carSnapshot?.priceYen ?? car?.priceYen) || 0)}</div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
                     <div className="text-muted">地域</div>
-                    <div>{car.region}</div>
+                    <div>{carSnapshot?.region ?? car?.region}</div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
                     <div className="text-muted">都道府県</div>
-                    <div>{car.pref}</div>
+                    <div>{carSnapshot?.pref ?? car?.pref}</div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
                     <div className="text-muted">市区町村</div>
-                    <div>{car.city}</div>
+                    <div>{carSnapshot?.city ?? car?.city}</div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2 text-[13px] py-1.5 border-b border-gray-200">
                     <div className="text-muted">お名前</div>

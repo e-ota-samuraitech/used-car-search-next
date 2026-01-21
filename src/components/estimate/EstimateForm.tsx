@@ -40,6 +40,16 @@ const EstimateForm = ({ car }: EstimateFormProps) => {
 
     const payload = {
       carId: car.id,
+      carSnapshot: {
+        id: car.id,
+        maker: car.maker,
+        model: car.model,
+        year: car.year,
+        priceYen: car.priceYen,
+        region: car.region,
+        pref: car.pref,
+        city: car.city,
+      },
       name: formData.name.trim(),
       email: formData.email.trim(),
       tel: formData.tel.trim(),
