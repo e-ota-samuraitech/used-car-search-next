@@ -164,6 +164,24 @@ export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: R
   const [sortBy, setSortBy] = useState<SortBy>('live');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // router.events で遷移中ローディングを管理
+  useEffect(() => {
+    const handleStart = () => setIsNavigating(true);
+    const handleComplete = () => setIsNavigating(false);
+    const handleError = () => setIsNavigating(false);
+
+    router.events.on('routeChangeStart', handleStart);
+    router.events.on('routeChangeComplete', handleComplete);
+    router.events.on('routeChangeError', handleError);
+
+    return () => {
+      router.events.off('routeChangeStart', handleStart);
+      router.events.off('routeChangeComplete', handleComplete);
+      router.events.off('routeChangeError', handleError);
+    };
+  }, [router.events]);
 
   const sortedCars = useMemo(() => sortCars(cars, sortBy), [cars, sortBy]);
 
@@ -284,7 +302,7 @@ export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: R
               検索結果
               {query && ` 「${query}」`}
             </div>
-            <SearchBar variant="compact" />
+            <SearchBar variant="compact" isNavigating={isNavigating} />
           </div>
 
           {/* スマホ版：絞り込み欄（折りたたみ式） */}
@@ -367,7 +385,7 @@ export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: R
 
                 {/* 検索結果リスト */}
                 {sortedCars.length > 0 ? (
-                  <ResultsList results={renderCars} debugEnabled={debugEnabled} debugSource={renderSource} />
+                  <ResultsList results={renderCars} debugEnabled={debugEnabled} debugSource={renderSource} isNavigating={isNavigating} />
                 ) : (
                   <div className="p-8 text-center text-gray-500">
                     該当する車両が見つかりませんでした

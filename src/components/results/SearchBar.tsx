@@ -1,33 +1,56 @@
-import { useEffect, useState, KeyboardEvent } from 'react';
+import { useEffect, useState, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import { useApp } from '@/context/AppContext';
 import { buildSearchUrl, normalizeQueryValue } from '@/lib/seo';
 import { carsKeyFromCarsPath, clearFreewordContext, setFreewordContext } from '@/lib/freewordSession';
+import Spinner from '@/components/common/Spinner';
 
 interface SearchBarProps {
   onSearch?: () => void;
   variant?: 'large' | 'compact';
+  isNavigating?: boolean;
 }
 
-const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
+const SearchBar = ({ onSearch, variant = 'large', isNavigating = false }: SearchBarProps) => {
   const { query, setQuery, filters } = useApp();
   const router = useRouter();
   const urlQ = normalizeQueryValue(router.query.q).trim();
   const [localQuery, setLocalQuery] = useState(urlQ || query);
+  const didInit = useRef(false);
 
+  // 初回のみ同期（毎回urlQで上書きしない）
   useEffect(() => {
-    // Prefer URL q (direct access /results?q=...) to avoid empty input.
-    // Fallback to context query for pages without ?q.
     if (!router.isReady) return;
+    if (didInit.current) return;
+    didInit.current = true;
 
-    const next = urlQ || query;
-    setLocalQuery(next);
+    const initial = urlQ || query;
+    setLocalQuery(initial);
     if (urlQ && urlQ !== query) {
       setQuery(urlQ);
     }
   }, [router.isReady, urlQ, query, setQuery]);
 
+  // routeChangeComplete で URL と同期（ブラウザバック対応）
+  useEffect(() => {
+    const handleComplete = (url: string) => {
+      try {
+        const params = new URL(url, window.location.origin).searchParams;
+        const q = params.get('q') || '';
+        setLocalQuery(q);
+      } catch {
+        // URL parse error - ignore
+      }
+    };
+    router.events.on('routeChangeComplete', handleComplete);
+    return () => {
+      router.events.off('routeChangeComplete', handleComplete);
+    };
+  }, [router.events]);
+
   const handleSearch = async () => {
+    if (isNavigating) return; // 二重送信ガード
+
     const trimmed = localQuery.trim();
     setQuery(trimmed);
 
@@ -65,9 +88,9 @@ const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
     if (router.pathname === '/results') {
       const currentQ = normalizeQueryValue(router.query.q).trim();
       if (trimmed === currentQ && router.asPath === next.url) {
-        // Same URL: avoid /api/search (can be blocked by IAP) and force SSR refresh.
-        // router.push/replace may not re-run SSR on identical URL, so do a full reload.
-        window.location.assign(next.url);
+        // Same URL: force SSR refresh via router.replace
+        await router.replace(next.url);
+        if (onSearch) onSearch();
         return;
       }
     }
@@ -76,10 +99,9 @@ const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
     if (onSearch) onSearch();
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handleSearch();
   };
 
   const inputHeight = variant === 'large' ? 'h-[48px]' : 'h-[40px]';
@@ -90,23 +112,29 @@ const SearchBar = ({ onSearch, variant = 'large' }: SearchBarProps) => {
   const containerJustify = variant === 'large' ? 'justify-center' : 'justify-start';
 
   return (
-    <div className={`flex gap-2.5 items-center ${containerJustify} flex-nowrap`}>
+    <form onSubmit={handleSubmit} className={`flex gap-2.5 items-center ${containerJustify} flex-nowrap`}>
       <input
         type="text"
         placeholder="例：プリウス 2020 東京"
         value={localQuery}
         onChange={(e) => setLocalQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
         className={`w-full ${inputMaxWidth} ${inputHeight} px-4 rounded-full border border-gray-200 outline-none focus:border-accent ${inputShadow} ${inputTextSize} min-w-0 transition-all`}
       />
       <button
-        type="button"
-        onClick={handleSearch}
-        className={`${buttonHeight} px-[18px] rounded-full border-0 bg-accent text-white cursor-pointer font-extrabold whitespace-nowrap flex-shrink-0 hover:bg-accent/90 transition-colors`}
+        type="submit"
+        disabled={isNavigating}
+        className={`${buttonHeight} px-[18px] rounded-full border-0 bg-accent text-white cursor-pointer font-extrabold whitespace-nowrap flex-shrink-0 hover:bg-accent/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-1.5`}
       >
-        検索
+        {isNavigating ? (
+          <>
+            <Spinner size="sm" />
+            <span>検索中…</span>
+          </>
+        ) : (
+          '検索'
+        )}
       </button>
-    </div>
+    </form>
   );
 };
 
