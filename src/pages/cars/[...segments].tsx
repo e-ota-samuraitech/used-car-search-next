@@ -30,7 +30,7 @@ import {
   isValidSlug,
 } from '@/lib/seo';
 import { executeSearchFromParsedUrl } from '@/lib/search';
-import { MockCarDataSource } from '@/server/search/dataSource/mockDataSource';
+import { getSearchClient } from '@/server/search/searchClient';
 import type { FeatureContent } from '@/lib/seo/featureContent';
 import { getFeatureContent } from '@/lib/seo/featureContent';
 
@@ -165,11 +165,58 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
       };
     }
 
-    // detail はここで確実に表示する
+    // detail はここで確実に表示する（Vertex から取得）
     if (parsed.type === 'detail' && parsed.detailId) {
-      const dataSource = new MockCarDataSource();
-      const car = dataSource.getAllCars().find((c: Car) => c.id === parsed.detailId) || null;
+      const detailId = parsed.detailId;
+      const client = getSearchClient();
+      let car: Car | null = null;
+      let usedFallback = false;
+
+      // デバッグログ用
+      const shouldLog = process.env.NODE_ENV !== 'production' || process.env.LOG_LEVEL === 'debug';
+
+      try {
+        // 第一候補: id フィルタで1件取得
+        if (shouldLog) {
+          console.log('[detail] trying id filter search:', { detailId });
+        }
+        const result = await client.search({ id: detailId });
+        car = result.items.find(c => c.id === detailId) || null;
+
+        if (shouldLog) {
+          console.log('[detail] id filter result:', {
+            detailId,
+            itemsCount: result.items.length,
+            foundCar: car ? car.id : null,
+          });
+        }
+      } catch (idFilterError) {
+        // id フィルタが INVALID_ARGUMENT 等で失敗 → q 検索にフォールバック
+        if (shouldLog) {
+          console.warn('[detail] id filter failed, falling back to q search:', idFilterError);
+        }
+        usedFallback = true;
+
+        try {
+          const fallbackResult = await client.search({ q: detailId });
+          car = fallbackResult.items.find(c => c.id === detailId) || null;
+
+          if (shouldLog) {
+            console.log('[detail] fallback q search result:', {
+              detailId,
+              itemsCount: fallbackResult.items.length,
+              foundCar: car ? car.id : null,
+            });
+          }
+        } catch (fallbackError) {
+          console.error('[detail] fallback search also failed:', fallbackError);
+        }
+      }
+
       if (!car) {
+        if (shouldLog) {
+          console.log('[detail] car not found, returning 404:', { detailId, usedFallback });
+        }
         return { notFound: true };
       }
 

@@ -8,6 +8,7 @@ export type SearchSort = 'updated_desc' | 'price_asc' | 'price_desc' | 'live';
 
 export interface SearchQuery {
   q?: string;
+  id?: string;  // 車両ID（詳細ページ用）
 
   prefSlug?: string;
   citySlug?: string;

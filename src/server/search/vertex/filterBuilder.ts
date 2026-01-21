@@ -25,6 +25,12 @@ function escapeSlug(value: string): string {
 export function buildFilter(query: SearchQuery): string | undefined {
   const conditions: string[] = [];
 
+  // id（車両詳細用）
+  if (query.id) {
+    // ID は英数字とハイフンのみ想定（car-000054 等）
+    conditions.push(`id: ANY("${escapeSlug(query.id)}")`);
+  }
+
   // makerSlug
   if (query.makerSlug) {
     conditions.push(`makerSlug: ANY("${escapeSlug(query.makerSlug)}")`);

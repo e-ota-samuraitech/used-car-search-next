@@ -1,5 +1,23 @@
-node_modules
-.git
-.gitignore
+# dependencies / build outputs
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# caches / tooling
+.turbo/
+.cache/
+.vercel/
+.vscode/
+.claude/
+
+# git
+.git/
+
+# env / logs
 .env
+.env.*
 *.log
+nul
+NUL
