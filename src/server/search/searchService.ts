@@ -73,7 +73,8 @@ export function searchCars(
     const keyword = params.q.toLowerCase();
     results = results.filter(car =>
       car.model.toLowerCase().includes(keyword) ||
-      car.maker.toLowerCase().includes(keyword)
+      car.maker.toLowerCase().includes(keyword) ||
+      car.shop.toLowerCase().includes(keyword)
     );
   }
 

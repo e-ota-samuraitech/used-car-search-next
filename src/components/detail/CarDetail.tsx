@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { yen, formatAgo } from '@/utils/helpers';
 import type { Car } from '@/types';
+import { encodeShopSlug } from '@/lib/shops/slug';
 
 interface CarDetailProps {
   car: Car | null;
@@ -87,7 +88,7 @@ const CarDetail = ({ car }: CarDetailProps) => {
             <div className="text-muted">店舗</div>
             <div>
               <Link
-                href={`/shop/${encodeURIComponent(car.shop)}`}
+                href={`/shops/${encodeShopSlug(car.shop)}/`}
                 className="underline underline-offset-2 hover:text-accent"
               >
                 {car.shop}

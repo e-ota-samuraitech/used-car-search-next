@@ -1,47 +1,27 @@
-import { useRouter } from 'next/router';
-import { ChangeEvent, useState, useEffect } from 'react';
-import Link from 'next/link';
-import Layout from '@/components/common/Layout';
-import ShopDetail from '@/components/shop/ShopDetail';
-import { useApp } from '@/context/AppContext';
-import type { SortBy } from '@/types';
+import type { GetServerSideProps } from 'next';
+import { encodeShopSlug } from '@/lib/shops/slug';
 
-export default function ShopPage() {
-  const router = useRouter();
-  const { shopName } = router.query;
-  const { findCarsByShop, findShopByName, sortBy, setSortBy, applySort } = useApp();
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const raw = typeof context.params?.shopName === 'string' ? context.params.shopName : '';
+  const decodedShopName = raw ? decodeURIComponent(raw).trim() : '';
 
-  const decodedShopName = typeof shopName === 'string' ? decodeURIComponent(shopName) : '';
-  const shop = findShopByName(decodedShopName);
-  const carsRaw = findCarsByShop(decodedShopName);
+  if (!decodedShopName) {
+    return { notFound: true };
+  }
 
-  const [cars, setCars] = useState(applySort(carsRaw));
+  const shopSlug = encodeShopSlug(decodedShopName);
+  if (!shopSlug) {
+    return { notFound: true };
+  }
 
-  useEffect(() => {
-    setCars(applySort(carsRaw));
-  }, [sortBy, decodedShopName]);
-
-  const handleSortChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const newSortBy = e.target.value as SortBy;
-    setSortBy(newSortBy);
+  return {
+    redirect: {
+      destination: `/shops/${shopSlug}/`,
+      permanent: true,
+    },
   };
+};
 
-  return (
-    <Layout>
-      <main>
-        <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
-          <div className="text-xs text-muted px-3 pt-2.5">
-            <Link href="/" className="underline underline-offset-2">トップ</Link> /{' '}
-            <Link href="/results" className="underline underline-offset-2">検索結果</Link> / 店舗詳細
-          </div>
-          <ShopDetail
-            shop={shop}
-            cars={cars}
-            sortBy={sortBy}
-            onSortChange={handleSortChange}
-          />
-        </div>
-      </main>
-    </Layout>
-  );
+export default function LegacyShopPage() {
+  return null;
 }

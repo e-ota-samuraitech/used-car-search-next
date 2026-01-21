@@ -10,6 +10,9 @@ export interface SearchQuery {
   q?: string;
   id?: string;  // 車両ID（詳細ページ用）
 
+  // 店舗ページ用（日本語の店舗名そのまま）
+  shop?: string;
+
   prefSlug?: string;
   citySlug?: string;
   makerSlug?: string;
@@ -78,24 +81,28 @@ class MockSearchClient implements SearchClient {
     const dataSource = new MockCarDataSource();
     const matched = searchCars(searchParams, dataSource);
 
+    // shop filter (exact match)
+    const shop = normalizeString(query.shop);
+    const matchedByShop = shop ? matched.filter((c) => c.shop === shop) : matched;
+
     // totalCount is ALWAYS the total matched count (pre-pagination)
-    const totalCount = matched.length;
+    const totalCount = matchedByShop.length;
 
     // MVP: keep pageSize fixed in code. If the caller does not request paging, return all.
     const page = query.page;
     const shouldPage = typeof page === 'number' && Number.isFinite(page) && page > 0;
 
-    let items = matched;
+    let items = matchedByShop;
     if (shouldPage) {
       const pageSize = normalizePositiveInt(query.pageSize, DEFAULT_PAGE_SIZE);
       const start = (Math.floor(page) - 1) * pageSize;
-      items = matched.slice(start, start + pageSize);
+      items = matchedByShop.slice(start, start + pageSize);
     }
 
     return {
       items,
       totalCount,
-      lastUpdatedAt: computeLastUpdatedAtIso(matched),
+      lastUpdatedAt: computeLastUpdatedAtIso(matchedByShop),
     };
   }
 }

@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { yen, formatAgo } from '@/utils/helpers';
 import type { Car } from '@/types';
+import { encodeShopSlug } from '@/lib/shops/slug';
 
 interface ResultCardProps {
   car: Car;
@@ -84,7 +85,7 @@ const ResultCard = ({ car, debugEnabled = false, debugSource = 'props' }: Result
           <span className="text-xs text-muted">
             店舗：
             <Link
-              href={`/shop/${encodeURIComponent(car.shop)}`}
+              href={`/shops/${encodeShopSlug(car.shop)}/`}
               className="underline underline-offset-2 hover:text-accent"
               onClick={(e) => e.stopPropagation()}
             >
