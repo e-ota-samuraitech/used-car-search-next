@@ -12,7 +12,7 @@ interface FiltersProps {
 }
 
 const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) => {
-  const { filters, query } = useApp();
+  const { filters, query, resetFilters } = useApp();
   const { prefToCities, makers, prefs } = useGeoFilters();
 
   const [localFilters, setLocalFilters] = useState<FiltersType>(filters);
@@ -68,8 +68,47 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
   };
 
   const handleReset = () => {
-    // リセット → /cars/ に遷移（MPA）
-    window.location.assign('/cars/');
+    const currentHref = typeof window !== 'undefined' ? window.location.href : '';
+    const currentUrl = currentHref ? new URL(currentHref) : null;
+    const pathname = currentUrl?.pathname || '';
+    const isResultsPage = pathname.startsWith('/results');
+    const isCarsPage = pathname.startsWith('/cars');
+
+    const qFromContext = (query || '').trim();
+    const qFromUrl = isResultsPage ? (currentUrl?.searchParams.get('q') || '').trim() : '';
+    let qFromSession = '';
+    if (!isResultsPage && isCarsPage) {
+      const ctx = getFreewordContext();
+      if (ctx) {
+        const currentCarsKey = carsKeyFromCarsPath(pathname);
+        if (currentCarsKey && currentCarsKey === ctx.sourceCarsKey) {
+          qFromSession = (ctx.lastFreewordQuery || '').trim();
+        }
+      }
+    }
+
+    const effectiveQ = qFromContext || qFromUrl || qFromSession;
+    const sort = (currentUrl?.searchParams.get('sort') || '').trim();
+
+    // UI/Context を初期化（/results 遷移後も AppProvider が保持されるため）
+    resetFilters();
+    setLocalFilters({
+      makerSlug: '',
+      prefSlug: '',
+      citySlug: '',
+      featureSlug: '',
+      minMan: '',
+      maxMan: '',
+      priceChangedOnly: false,
+    });
+
+    // /cars には行かない。q を維持し、filter系/page は落とす。sort は維持。
+    const params = new URLSearchParams();
+    if (effectiveQ) params.set('q', effectiveQ);
+    if (sort) params.set('sort', sort);
+    const qs = params.toString();
+    const url = qs ? `/results/?${qs}` : '/results/';
+    window.location.assign(url);
   };
 
   const citiesForPref = localFilters.prefSlug ? prefToCities[localFilters.prefSlug] || [] : [];

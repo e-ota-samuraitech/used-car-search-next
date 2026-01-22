@@ -11,6 +11,9 @@ interface CarDetailProps {
 const CarDetail = ({ car }: CarDetailProps) => {
   const router = useRouter();
 
+  const fromParam = typeof router.query.from === 'string' ? router.query.from : '';
+  const safeFrom = fromParam.startsWith('/') && !fromParam.startsWith('//') ? fromParam : '';
+
   if (!car) {
     return (
       <div className="p-3">
@@ -99,7 +102,7 @@ const CarDetail = ({ car }: CarDetailProps) => {
           <div className="mt-3 flex gap-2 flex-wrap items-center">
             <button
               className="inline-flex items-center justify-center gap-2 text-xs h-[34px] px-3 rounded-full border border-gray-200 bg-white cursor-pointer whitespace-nowrap"
-              onClick={() => router.push('/results')}
+              onClick={() => router.push(safeFrom || '/results/')}
               type="button"
             >
               検索結果へ戻る

@@ -9,9 +9,10 @@ interface SearchBarProps {
   onSearch?: () => void;
   variant?: 'large' | 'compact';
   isNavigating?: boolean;
+  placeholder?: string;
 }
 
-const SearchBar = ({ onSearch, variant = 'large', isNavigating = false }: SearchBarProps) => {
+const SearchBar = ({ onSearch, variant = 'large', isNavigating = false, placeholder }: SearchBarProps) => {
   const { query, setQuery, filters } = useApp();
   const router = useRouter();
   const urlQ = normalizeQueryValue(router.query.q).trim();
@@ -115,7 +116,7 @@ const SearchBar = ({ onSearch, variant = 'large', isNavigating = false }: Search
     <form onSubmit={handleSubmit} className={`flex gap-2.5 items-center ${containerJustify} flex-nowrap`}>
       <input
         type="text"
-        placeholder="例：プリウス 2020 東京"
+        placeholder={placeholder ?? '例：プリウス 2020 東京'}
         value={localQuery}
         onChange={(e) => setLocalQuery(e.target.value)}
         className={`w-full ${inputMaxWidth} ${inputHeight} px-4 rounded-full border border-gray-200 outline-none focus:border-accent ${inputShadow} ${inputTextSize} min-w-0 transition-all`}
