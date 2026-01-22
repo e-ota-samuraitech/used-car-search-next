@@ -12,6 +12,19 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
+// SVG Icons
+const SearchIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+
+const ClearIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
 const SearchBar = ({ onSearch, variant = 'large', isNavigating = false, placeholder }: SearchBarProps) => {
   const { query, setQuery, filters } = useApp();
   const router = useRouter();
@@ -105,26 +118,53 @@ const SearchBar = ({ onSearch, variant = 'large', isNavigating = false, placehol
     handleSearch();
   };
 
-  const inputHeight = variant === 'large' ? 'h-[48px]' : 'h-[40px]';
-  const buttonHeight = variant === 'large' ? 'h-[48px]' : 'h-[40px]';
-  const inputMaxWidth = variant === 'large' ? 'max-w-[600px]' : 'max-w-full';
-  const inputTextSize = variant === 'large' ? 'text-base' : 'text-sm';
-  const inputShadow = variant === 'large' ? 'shadow-md hover:shadow-lg' : 'shadow-sm';
-  const containerJustify = variant === 'large' ? 'justify-center' : 'justify-start';
+  const handleClear = () => {
+    setLocalQuery('');
+  };
+
+  // Variant-based styles
+  const isLarge = variant === 'large';
+  const containerPadding = isLarge ? 'px-4 md:px-6 py-3 md:py-4' : 'px-3 md:px-4 py-2 md:py-2.5';
+  const iconSize = isLarge ? 'w-5 h-5 md:w-6 md:h-6' : 'w-4 h-4 md:w-5 md:h-5';
+  const inputTextSize = isLarge ? 'text-sm md:text-base' : 'text-xs md:text-sm';
+  const containerShadow = isLarge ? 'hover:shadow-lg' : 'hover:shadow-md';
+  const buttonPadding = isLarge ? 'px-6 md:px-8 py-2.5 md:py-3' : 'px-4 md:px-6 py-2 md:py-2.5';
+  const buttonTextSize = isLarge ? 'text-sm md:text-base' : 'text-xs md:text-sm';
 
   return (
-    <form onSubmit={handleSubmit} className={`flex gap-2.5 items-center ${containerJustify} flex-nowrap`}>
-      <input
-        type="text"
-        placeholder={placeholder ?? '例：プリウス 2020 東京'}
-        value={localQuery}
-        onChange={(e) => setLocalQuery(e.target.value)}
-        className={`w-full ${inputMaxWidth} ${inputHeight} px-4 rounded-full border border-gray-200 outline-none focus:border-accent ${inputShadow} ${inputTextSize} min-w-0 transition-all`}
-      />
+    <form onSubmit={handleSubmit} className={`flex ${isLarge ? 'flex-col sm:flex-row' : 'flex-row'} gap-3 ${isLarge ? 'items-center justify-center' : 'items-center'}`}>
+      {/* Search Input Container */}
+      <div className={`relative flex items-center w-full ${isLarge ? 'max-w-2xl' : ''} border border-gray-300 rounded-full ${containerPadding} ${containerShadow} transition-shadow bg-white group`}>
+        {/* Search Icon */}
+        <SearchIcon className={`${iconSize} text-gray-400 mr-2 md:mr-3 flex-shrink-0`} />
+
+        {/* Input */}
+        <input
+          type="text"
+          placeholder={placeholder ?? '車種、メーカー、地域で検索'}
+          value={localQuery}
+          onChange={(e) => setLocalQuery(e.target.value)}
+          className={`flex-1 outline-none ${inputTextSize} text-gray-700 bg-transparent min-w-0`}
+        />
+
+        {/* Clear Button */}
+        {localQuery && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="ml-2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="クリア"
+          >
+            <ClearIcon className={iconSize} />
+          </button>
+        )}
+      </div>
+
+      {/* Search Button */}
       <button
         type="submit"
         disabled={isNavigating}
-        className={`${buttonHeight} px-[18px] rounded-full border-0 bg-accent text-white cursor-pointer font-extrabold whitespace-nowrap flex-shrink-0 hover:bg-accent/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-1.5`}
+        className={`${buttonPadding} bg-accent text-white ${buttonTextSize} font-medium rounded-full hover:bg-accent/90 transition-all shadow-md hover:shadow-lg whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 flex-shrink-0`}
       >
         {isNavigating ? (
           <>

@@ -2,19 +2,55 @@ import Link from 'next/link';
 
 const Footer = () => {
   return (
-    <footer className="border-t border-gray-200 bg-gray-50 mt-auto">
-      <div className="max-w-[1200px] mx-auto px-3.5 py-4 flex gap-3 items-center justify-center md:justify-between flex-wrap text-xs text-gray-500">
-        <div className="hidden md:block">運営会社：ダミー株式会社</div>
-        <div className="flex gap-4 flex-wrap items-center justify-center">
-          <Link href="/terms" className="hover:underline underline-offset-2">
-            利用規約
-          </Link>
-          <Link href="/privacy" className="hover:underline underline-offset-2">
-            個人情報保護方針
-          </Link>
-          <Link href="/contact" className="hover:underline underline-offset-2">
-            お問い合わせ
-          </Link>
+    <footer className="bg-accent text-white py-6 md:py-8 px-4 md:px-6 mt-auto">
+      <div className="max-w-6xl mx-auto">
+        {/* Links Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 mb-6">
+          {/* サービス */}
+          <div>
+            <h3 className="font-medium mb-3 text-sm md:text-base">サービス</h3>
+            <ul className="space-y-2 text-xs md:text-sm opacity-90">
+              <li>
+                <Link href="/cars/" className="hover:underline">
+                  中古車検索
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* サポート */}
+          <div>
+            <h3 className="font-medium mb-3 text-sm md:text-base">サポート</h3>
+            <ul className="space-y-2 text-xs md:text-sm opacity-90">
+              <li>
+                <Link href="/contact" className="hover:underline">
+                  お問い合わせ
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="hover:underline">
+                  利用規約
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* 会社情報 */}
+          <div>
+            <h3 className="font-medium mb-3 text-sm md:text-base">会社情報</h3>
+            <ul className="space-y-2 text-xs md:text-sm opacity-90">
+              <li>
+                <Link href="/privacy" className="hover:underline">
+                  プライバシーポリシー
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Copyright */}
+        <div className="border-t border-white/20 pt-4 md:pt-6 text-center text-xs md:text-sm opacity-80">
+          <p>© {new Date().getFullYear()} 中古車検索. All rights reserved.</p>
         </div>
       </div>
     </footer>

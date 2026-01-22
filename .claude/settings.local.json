@@ -18,7 +18,10 @@
       "Bash(npx tsc:*)",
       "Bash(npx tsx:*)",
       "Bash(gcloud auth print-access-token:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(ping:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx kill-port:*)"
     ]
   }
 }
