@@ -1,9 +1,11 @@
-import Layout from '@/components/common/Layout';
-import SearchBar from '@/components/results/SearchBar';
-import SearchLogo from '@/components/common/SearchLogo';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useState, FormEvent } from 'react';
+import Footer from '@/components/common/Footer';
+import { useApp } from '@/context/AppContext';
+import { buildSearchUrl } from '@/lib/seo';
+import { carsKeyFromCarsPath, clearFreewordContext, setFreewordContext } from '@/lib/freewordSession';
 
 // Quick Links データ（SEO準拠のURL構造）
 const QUICK_LINKS = [
@@ -41,38 +43,116 @@ const CAMPAIGNS = [
 
 export default function TopPage() {
   const router = useRouter();
-  const [isNavigating, setIsNavigating] = useState(false);
+  const { setQuery, filters } = useApp();
+  const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    const handleStart = () => setIsNavigating(true);
-    const handleComplete = () => setIsNavigating(false);
-    const handleError = () => setIsNavigating(false);
+  const handleSearch = async (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = searchQuery.trim();
+    setQuery(trimmed);
 
-    router.events.on('routeChangeStart', handleStart);
-    router.events.on('routeChangeComplete', handleComplete);
-    router.events.on('routeChangeError', handleError);
+    if (!trimmed) {
+      clearFreewordContext();
+    }
 
-    return () => {
-      router.events.off('routeChangeStart', handleStart);
-      router.events.off('routeChangeComplete', handleComplete);
-      router.events.off('routeChangeError', handleError);
-    };
-  }, [router.events]);
+    const next = buildSearchUrl({
+      q: trimmed,
+      makerSlug: filters.makerSlug,
+      prefSlug: filters.prefSlug,
+      citySlug: filters.citySlug,
+      featureSlug: filters.featureSlug,
+      minMan: filters.minMan,
+      maxMan: filters.maxMan,
+      priceChangedOnly: filters.priceChangedOnly,
+    });
+
+    if (next.destination === 'cars') {
+      const sourceCarsKey = carsKeyFromCarsPath(next.url);
+      if (sourceCarsKey && trimmed) {
+        setFreewordContext({ lastFreewordQuery: trimmed, sourceCarsKey });
+      } else {
+        clearFreewordContext();
+      }
+      await router.push(next.url);
+      return;
+    }
+
+    clearFreewordContext();
+    await router.push(next.url);
+  };
 
   return (
-    <Layout showFilters={false}>
-      {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 py-8 md:py-12">
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* Header (readdy準拠) */}
+      <header className="px-4 md:px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/readdy-logo.png"
+            alt="中古車速報"
+            width={40}
+            height={40}
+            className="h-8 md:h-10 w-auto"
+          />
+        </div>
+        <Link
+          href="/login"
+          className="px-4 md:px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-full transition-colors whitespace-nowrap cursor-pointer"
+        >
+          ログイン
+        </Link>
+      </header>
+
+      {/* Main Content (readdy準拠: -mt で中央寄せ) */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 -mt-10 md:-mt-20">
         <div className="w-full max-w-2xl">
           {/* Logo + Title */}
-          <SearchLogo />
+          <div className="text-center mb-6 md:mb-8">
+            <Image
+              src="/readdy-logo.png"
+              alt="中古車速報"
+              width={96}
+              height={96}
+              className="h-16 md:h-24 w-auto mx-auto mb-3 md:mb-4"
+            />
+            <h1 className="text-xl md:text-2xl font-normal text-gray-700">中古車速報</h1>
+          </div>
 
-          {/* Search Box + Buttons */}
-          <div className="mb-6 md:mb-8">
-            <SearchBar variant="large" isNavigating={isNavigating} placeholder="車種、メーカー、地域で検索" />
+          {/* Search Box (readdy準拠: ボタンは検索バーの下) */}
+          <form onSubmit={handleSearch} className="mb-6 md:mb-8">
+            <div className="relative group">
+              <div className="flex items-center border border-gray-300 rounded-full px-4 md:px-6 py-3 md:py-4 hover:shadow-lg transition-shadow bg-white">
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-gray-400 mr-3 md:mr-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="車種、メーカー、地域で検索"
+                  className="flex-1 outline-none text-sm md:text-base text-gray-700 bg-transparent"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="ml-2 cursor-pointer"
+                  >
+                    <svg className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
 
-            {/* 注目の車両ボタン */}
-            <div className="flex justify-center mt-4">
+            {/* ボタン: 検索バーの下に横並び (readdy準拠) */}
+            <div className="flex justify-center gap-3 mt-4 md:mt-6">
+              <button
+                type="submit"
+                className="px-6 md:px-8 py-2.5 md:py-3 bg-teal-600 text-white text-sm md:text-base font-medium rounded-full hover:bg-teal-700 transition-all shadow-md hover:shadow-lg whitespace-nowrap cursor-pointer"
+              >
+                検索
+              </button>
               <Link
                 href="/cars/"
                 className="px-4 md:px-6 py-2.5 md:py-3 bg-gray-50 text-xs md:text-sm text-gray-700 rounded hover:border hover:border-gray-300 hover:shadow-sm transition-all whitespace-nowrap"
@@ -80,7 +160,7 @@ export default function TopPage() {
                 注目の車両
               </Link>
             </div>
-          </div>
+          </form>
 
           {/* Quick Links */}
           <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-xs md:text-sm text-gray-600 px-4">
@@ -88,7 +168,7 @@ export default function TopPage() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="hover:underline whitespace-nowrap"
+                className="hover:underline cursor-pointer whitespace-nowrap"
               >
                 {link.label}
               </Link>
@@ -102,7 +182,9 @@ export default function TopPage() {
         <div className="max-w-6xl mx-auto">
           {/* Section Title */}
           <h2 className="text-lg md:text-xl font-medium text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
-            <span>🔥</span>
+            <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 23c-1.1 0-1.99-.89-1.99-1.99h3.98c0 1.1-.89 1.99-1.99 1.99zm7-2.01H5v-2l1-1v-5.8c0-3.25 1.82-5.95 5-6.67V4c0-.83.67-1.5 1.5-1.5S14 3.17 14 4v.52c3.18.72 5 3.42 5 6.68v5.8l1 1v2z"/>
+            </svg>
             今、何が起きているか
           </h2>
 
@@ -133,13 +215,16 @@ export default function TopPage() {
           <div className="text-center mt-6 md:mt-8">
             <Link
               href="/campaigns"
-              className="inline-block px-6 py-3 bg-white border border-gray-300 text-sm text-gray-700 rounded hover:bg-gray-50 transition-colors whitespace-nowrap"
+              className="inline-block px-6 py-3 bg-white border border-gray-300 text-sm text-gray-700 rounded hover:bg-gray-50 transition-colors whitespace-nowrap cursor-pointer"
             >
               すべてのキャンペーンを見る
             </Link>
           </div>
         </div>
       </section>
-    </Layout>
+
+      {/* Footer */}
+      <Footer />
+    </div>
   );
 }
