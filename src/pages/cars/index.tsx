@@ -10,6 +10,8 @@ import { SeoHead } from '@/components/seo/SeoHead';
 import SearchBar from '@/components/results/SearchBar';
 import ResultsList from '@/components/results/ResultsList';
 import Filters from '@/components/filters/Filters';
+import ResultsShell from '@/components/results/ResultsShell';
+import CampaignSidebar from '@/components/results/CampaignSidebar';
 import type { Car } from '@/types';
 import type { SeoResult } from '@/lib/seo';
 import { evaluateSeo, getBaseUrl } from '@/lib/seo';
@@ -134,58 +136,52 @@ export default function CarsTopPage({ seo, cars, totalCount }: CarsTopPageProps)
         robots={seo.robots}
       />
 
-      <Layout showFilters={false}>
+      <Layout showFilters={false} contentClassName="max-w-none mx-0 p-0">
         <div className="w-full">
-          {/* ページ上部 */}
-          <div className="mb-6 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden p-6">
-            <h1 className="text-2xl font-bold mb-4">{seo.h1}</h1>
-            <p className="text-gray-600 mb-4">{seo.description}</p>
-            <SearchBar variant="large" />
+          <div className="mx-auto max-w-[1200px] px-4 md:px-6 py-4 md:py-6">
+            {/* ページ上部 */}
+            <div className="mb-6 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden p-6">
+              <h1 className="text-2xl font-bold mb-4">{seo.h1}</h1>
+              <p className="text-gray-600 mb-4">{seo.description}</p>
+              <SearchBar variant="large" />
+            </div>
           </div>
 
-          {/* メインコンテンツエリア */}
-          <div className={`grid grid-cols-1 gap-3.5 ${isFilterSidebarOpen ? 'lg:grid-cols-[1fr_320px]' : ''}`}>
-            {/* 左側：検索結果 */}
-            <main>
-              <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
-                {/* ツールバー */}
-                <div className="flex items-center justify-between gap-2.5 px-3 py-2.5 border-b border-gray-200 bg-white">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
-                      className="hidden lg:flex h-[34px] px-3 rounded-full border border-gray-200 bg-white cursor-pointer items-center gap-1.5 hover:bg-gray-50 transition-colors text-sm"
-                      type="button"
-                    >
-                      {isFilterSidebarOpen ? (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          <span>閉じる</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                          </svg>
-                          <span>絞り込み</span>
-                        </>
-                      )}
-                    </button>
-                    <div className="text-xs text-gray-600">検索結果 {totalCount}件</div>
-                  </div>
+          <ResultsShell
+            left={isFilterSidebarOpen ? <Filters isOpen={true} /> : null}
+            right={<CampaignSidebar />}
+          >
+            <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between gap-2.5 px-3 py-2.5 border-b border-gray-200 bg-white">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
+                    className="hidden lg:flex h-[34px] px-3 rounded-full border border-gray-200 bg-white cursor-pointer items-center gap-1.5 hover:bg-gray-50 transition-colors text-sm"
+                    type="button"
+                  >
+                    {isFilterSidebarOpen ? (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>閉じる</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 0 00-.293.707V17l-4 4v-6.586a1 0 00-.293-.707L3.293 7.293A1 0 013 6.586V4z" />
+                        </svg>
+                        <span>絞り込み</span>
+                      </>
+                    )}
+                  </button>
+                  <div className="text-xs text-gray-600">検索結果 {totalCount}件</div>
                 </div>
-
-                {/* 検索結果リスト */}
-                <ResultsList results={cars} />
               </div>
-            </main>
 
-            {/* 右側：絞り込みフィルター */}
-            <aside className="hidden lg:block">
-              <Filters isOpen={isFilterSidebarOpen} />
-            </aside>
-          </div>
+              <ResultsList results={cars} />
+            </div>
+          </ResultsShell>
         </div>
       </Layout>
     </>

@@ -6,13 +6,16 @@ import Filters from '@/components/filters/Filters';
 interface LayoutProps {
   children: ReactNode;
   showFilters?: boolean;
+  contentClassName?: string;
 }
 
-const Layout = ({ children, showFilters = false }: LayoutProps) => {
+const Layout = ({ children, showFilters = false, contentClassName }: LayoutProps) => {
   return (
     <div className="flex flex-col min-h-screen">
       <Topbar />
-      <div className={`max-w-[1200px] mx-auto p-3.5 w-full flex-1 min-h-[calc(100vh-120px)] ${showFilters ? 'grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3.5' : ''}`}>
+      <div
+        className={`max-w-[1200px] mx-auto p-3.5 w-full flex-1 min-h-[calc(100vh-120px)] ${showFilters ? 'grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3.5' : ''} ${contentClassName || ''}`}
+      >
         {children}
         {showFilters && <Filters />}
       </div>

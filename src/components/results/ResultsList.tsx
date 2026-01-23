@@ -40,7 +40,7 @@ const ResultsList = ({ results, debugEnabled = false, debugSource = 'props', isN
           </div>
         </div>
       )}
-      <div className="p-3 grid grid-cols-1 gap-2.5">
+      <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {results.map(car => (
           <ResultCard key={car.id} car={car} debugEnabled={debugEnabled} debugSource={debugSource} />
         ))}
