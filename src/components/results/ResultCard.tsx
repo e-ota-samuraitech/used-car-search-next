@@ -6,6 +6,7 @@ import { encodeShopSlug } from '@/lib/shops/slug';
 
 interface ResultCardProps {
   car: Car;
+  variant?: 'horizontal' | 'vertical';
   debugEnabled?: boolean;
   debugSource?: 'props' | 'context' | 'fallback';
 }
@@ -36,12 +37,11 @@ const StoreIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const ResultCard = ({ car, debugEnabled = false, debugSource = 'props' }: ResultCardProps) => {
+const ResultCard = ({ car, variant = 'horizontal', debugEnabled = false, debugSource = 'props' }: ResultCardProps) => {
   const router = useRouter();
 
   const delta = car.priceYen - car.prevPriceYen;
   const hasDelta = car.prevPriceYen !== car.priceYen;
-  const deltaClass = delta > 0 ? 'text-up' : delta < 0 ? 'text-down' : '';
   const deltaText = delta === 0 ? '' : delta > 0 ? `+${yen(delta)}` : `${yen(delta)}`;
 
   const handleCardClick = () => {
@@ -53,6 +53,84 @@ const ResultCard = ({ car, debugEnabled = false, debugSource = 'props' }: Result
     router.push(`/estimate/${car.id}`);
   };
 
+  // 縦型カード（readdy準拠）
+  if (variant === 'vertical') {
+    return (
+      <div
+        className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
+        onClick={handleCardClick}
+        role="button"
+        tabIndex={0}
+        data-debug-source={debugEnabled ? debugSource : undefined}
+        data-debug-id={debugEnabled ? car.id : undefined}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') handleCardClick();
+        }}
+      >
+        {/* Image (top) */}
+        <div className="w-full h-48 md:h-56 overflow-hidden bg-gray-100 flex items-center justify-center">
+          <span className="text-gray-400 text-sm">No Image</span>
+        </div>
+
+        {/* Content (bottom) */}
+        <div className="p-3 md:p-4">
+          {debugEnabled && (
+            <div className="mb-1 text-[10px] text-gray-500">
+              source: {debugSource} / id: {car.id}
+            </div>
+          )}
+
+          {/* Posted time & Price change badge */}
+          <div className="flex items-center gap-2 mb-2">
+            {hasDelta && (
+              <span className={`px-2 py-1 text-xs font-medium rounded ${delta < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                {delta < 0 ? '値下げ' : '値上げ'}
+              </span>
+            )}
+            <span className="text-xs text-gray-500">{formatAgo(car.postedAt)}</span>
+          </div>
+
+          {/* Title */}
+          <h3 className="font-medium text-gray-800 mb-2 text-sm line-clamp-2">
+            {car.maker} {car.model}（{car.year}年式）
+          </h3>
+
+          {/* Price */}
+          <div className="text-base md:text-lg font-bold text-teal-600 mb-3">
+            ¥{yen(car.priceYen)}
+          </div>
+
+          {/* Metadata */}
+          <div className="space-y-1 text-xs text-gray-600">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4" />
+              <span>{car.year}年</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <SpeedIcon className="w-4 h-4" />
+              <span>{(car.mileage / 10000).toFixed(1)}万km</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <LocationIcon className="w-4 h-4" />
+              <span>{car.pref}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <StoreIcon className="w-4 h-4" />
+              <Link
+                href={`/shops/${encodeShopSlug(car.shop)}/`}
+                className="hover:text-teal-600 hover:underline line-clamp-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {car.shop}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 横型カード（従来）
   return (
     <div
       className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"

@@ -7,12 +7,13 @@ interface LayoutProps {
   children: ReactNode;
   showFilters?: boolean;
   contentClassName?: string;
+  topbarVariant?: 'home' | 'search';
 }
 
-const Layout = ({ children, showFilters = false, contentClassName }: LayoutProps) => {
+const Layout = ({ children, showFilters = false, contentClassName, topbarVariant = 'home' }: LayoutProps) => {
   return (
     <div className="flex flex-col min-h-screen">
-      <Topbar />
+      <Topbar variant={topbarVariant} />
       <div
         className={`max-w-[1200px] mx-auto p-3.5 w-full flex-1 min-h-[calc(100vh-120px)] ${showFilters ? 'grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3.5' : ''} ${contentClassName || ''}`}
       >

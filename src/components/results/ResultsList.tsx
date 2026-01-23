@@ -4,12 +4,13 @@ import type { Car } from '@/types';
 
 interface ResultsListProps {
   results: Car[];
+  cardVariant?: 'horizontal' | 'vertical';
   debugEnabled?: boolean;
   debugSource?: 'props' | 'context' | 'fallback';
   isNavigating?: boolean;
 }
 
-const ResultsList = ({ results, debugEnabled = false, debugSource = 'props', isNavigating = false }: ResultsListProps) => {
+const ResultsList = ({ results, cardVariant = 'vertical', debugEnabled = false, debugSource = 'props', isNavigating = false }: ResultsListProps) => {
   if (!results || results.length === 0) {
     return (
       <div className="relative">
@@ -21,10 +22,11 @@ const ResultsList = ({ results, debugEnabled = false, debugSource = 'props', isN
             </div>
           </div>
         )}
-        <div className="p-3">
-          <div className="border border-dashed border-gray-200 rounded-[14px] p-4 text-muted text-sm bg-white">
-            条件に合う車両が見つかりませんでした。
-          </div>
+        <div className="text-center py-16">
+          <svg className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p className="text-sm md:text-base text-gray-600">検索結果が見つかりませんでした</p>
         </div>
       </div>
     );
@@ -40,9 +42,9 @@ const ResultsList = ({ results, debugEnabled = false, debugSource = 'props', isN
           </div>
         </div>
       )}
-      <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {results.map(car => (
-          <ResultCard key={car.id} car={car} debugEnabled={debugEnabled} debugSource={debugSource} />
+          <ResultCard key={car.id} car={car} variant={cardVariant} debugEnabled={debugEnabled} debugSource={debugSource} />
         ))}
       </div>
     </div>

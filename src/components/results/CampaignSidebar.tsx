@@ -26,9 +26,11 @@ const CAMPAIGNS = [
 
 export default function CampaignSidebar() {
   return (
-    <div className="hidden lg:block w-80 border-l border-gray-200 p-6 bg-gray-50">
-      <h2 className="text-sm font-semibold text-gray-800 mb-4 flex items-center gap-2">
-        <span className="text-red-500" aria-hidden="true">🔥</span>
+    <>
+      <h2 className="text-base font-medium text-gray-800 mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 23c-1.1 0-1.99-.89-1.99-1.99h3.98c0 1.1-.89 1.99-1.99 1.99zm7-2.01H5v-2l1-1v-5.8c0-3.25 1.82-5.95 5-6.67V4c0-.83.67-1.5 1.5-1.5S14 3.17 14 4v.52c3.18.72 5 3.42 5 6.68v5.8l1 1v2z"/>
+        </svg>
         キャンペーン情報
       </h2>
 
@@ -39,7 +41,7 @@ export default function CampaignSidebar() {
             href="/campaigns"
             className="bg-white rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-shadow cursor-pointer block"
           >
-            <div className="w-full h-32 bg-gray-200 flex items-center justify-center">
+            <div className="w-full h-32 overflow-hidden bg-gray-100 flex items-center justify-center">
               <span className="text-gray-400 text-sm">キャンペーン画像</span>
             </div>
             <div className="p-3">
@@ -58,6 +60,6 @@ export default function CampaignSidebar() {
       >
         すべて見る
       </Link>
-    </div>
+    </>
   );
 }

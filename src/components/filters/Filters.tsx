@@ -276,18 +276,14 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
     );
   }
 
-  // 通常モード（PC版サイドバー）
+  // 通常モード（PC版サイドバー） - readdy準拠で枠なし
   return (
-    <aside className="w-full lg:w-[320px]">
-      <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden h-fit">
-        <h3 className="m-0 px-3 py-2.5 text-[13px] text-muted bg-gray-50 border-b border-gray-200">
-          絞り込み
-        </h3>
-        <div className="p-3">
-          {filtersContent}
-        </div>
+    <>
+      <div className="flex items-center justify-between mb-4 md:mb-6">
+        <h2 className="text-sm md:text-base font-medium text-gray-800">絞り込み検索</h2>
       </div>
-    </aside>
+      {filtersContent}
+    </>
   );
 };
 
