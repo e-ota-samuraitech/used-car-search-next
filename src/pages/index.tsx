@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import Footer from '@/components/common/Footer';
 import { useApp } from '@/context/AppContext';
 import { buildSearchUrl } from '@/lib/seo';
@@ -45,10 +45,31 @@ export default function TopPage() {
   const router = useRouter();
   const { setQuery, filters } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  // 検索開始は submit 時のみ（ログイン遷移等で検索中にならないように）
+  useEffect(() => {
+    const handleDone = () => {
+      setIsSearching(false);
+    };
+    router.events.on('routeChangeComplete', handleDone);
+    router.events.on('routeChangeError', handleDone);
+    return () => {
+      router.events.off('routeChangeComplete', handleDone);
+      router.events.off('routeChangeError', handleDone);
+    };
+  }, [router.events]);
+
+  const trimmedQuery = searchQuery.trim();
+  const canSearch = !!trimmedQuery && !isSearching;
 
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    if (isSearching) return;
+
+    setIsSearching(true);
     setQuery(trimmed);
 
     if (!trimmed) {
@@ -73,18 +94,26 @@ export default function TopPage() {
       } else {
         clearFreewordContext();
       }
-      await router.push(next.url);
+      try {
+        await router.push(next.url);
+      } catch {
+        setIsSearching(false);
+      }
       return;
     }
 
     clearFreewordContext();
-    await router.push(next.url);
+    try {
+      await router.push(next.url);
+    } catch {
+      setIsSearching(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
       {/* Header (readdy準拠) */}
-      <header className="px-4 md:px-6 py-4 flex items-center justify-between">
+      <header className="relative z-50 px-4 md:px-6 py-4 flex items-center justify-between bg-white">
         <div className="flex items-center gap-3">
           <Image
             src="/readdy-logo.png"
@@ -95,15 +124,15 @@ export default function TopPage() {
           />
         </div>
         <Link
-          href="/login"
-          className="px-4 md:px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-full transition-colors whitespace-nowrap cursor-pointer"
+          href="/login/"
+          className="px-4 md:px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 rounded-full transition-colors whitespace-nowrap cursor-pointer"
         >
           ログイン
         </Link>
       </header>
 
       {/* Main Content (readdy準拠: -mt で中央寄せ) */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 -mt-10 md:-mt-20">
+      <main className="relative z-0 flex-1 flex flex-col items-center justify-center px-4 md:px-6 -mt-10 md:-mt-20">
         <div className="w-full max-w-2xl">
           {/* Logo + Title */}
           <div className="text-center mb-6 md:mb-8">
@@ -117,45 +146,51 @@ export default function TopPage() {
             <h1 className="text-xl md:text-2xl font-normal text-gray-700">中古車速報</h1>
           </div>
 
-          {/* Search Box (readdy準拠: ボタンは検索バーの下) */}
+          {/* Search Box */}
           <form onSubmit={handleSearch} className="mb-6 md:mb-8">
-            <div className="relative group">
-              <div className="flex items-center border border-gray-300 rounded-full px-4 md:px-6 py-3 md:py-4 hover:shadow-lg transition-shadow bg-white">
-                <svg className="w-5 h-5 md:w-6 md:h-6 text-gray-400 mr-3 md:mr-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="車種、メーカー、地域で検索"
-                  className="flex-1 outline-none text-sm md:text-base text-gray-700 bg-transparent"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="ml-2 cursor-pointer"
-                  >
-                    <svg className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="relative group flex-1 min-w-0">
+                <div className="flex items-center border border-gray-300 rounded-full px-4 md:px-6 py-3 md:py-4 hover:shadow-lg transition-shadow bg-white">
+                  <svg className="w-5 h-5 md:w-6 md:h-6 text-gray-400 mr-3 md:mr-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="車種、メーカー、地域で検索"
+                    disabled={isSearching}
+                    className="flex-1 min-w-0 outline-none text-sm md:text-base text-gray-700 bg-transparent disabled:opacity-70"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      disabled={isSearching}
+                      className="ml-2 p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="クリア"
+                    >
+                      <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* ボタン: 検索バーの下に横並び (readdy準拠) */}
-            <div className="flex justify-center gap-3 mt-4 md:mt-6">
               <button
                 type="submit"
-                className="px-6 md:px-8 py-2.5 md:py-3 bg-teal-600 text-white text-sm md:text-base font-medium rounded-full hover:bg-teal-700 transition-all shadow-md hover:shadow-lg whitespace-nowrap cursor-pointer"
+                disabled={!canSearch}
+                className="px-6 md:px-8 py-2.5 md:py-3 bg-teal-600 text-white text-sm md:text-base font-medium rounded-full hover:bg-teal-700 transition-all shadow-md hover:shadow-lg whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600"
               >
-                検索
+                {isSearching ? '検索中…' : '検索'}
               </button>
+            </div>
+
+            <div className="flex justify-center mt-3 md:mt-4">
               <Link
                 href="/cars/"
-                className="px-4 md:px-6 py-2.5 md:py-3 bg-gray-50 text-xs md:text-sm text-gray-700 rounded hover:border hover:border-gray-300 hover:shadow-sm transition-all whitespace-nowrap"
+                className="text-sm font-medium text-teal-700 hover:text-teal-800 hover:underline underline-offset-2"
               >
                 注目の車両
               </Link>
