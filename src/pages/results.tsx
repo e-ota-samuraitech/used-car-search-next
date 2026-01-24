@@ -92,10 +92,27 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
     // /results is UX-only; allow sort/page in future, but keep SEO noindex
   };
 
-  const { getSearchClient } = await import('@/server/search/searchClient');
+  // [SEARCH_ENV] 環境変数ダンプ（クライアント選択の証拠）
+  console.log(
+    `[SEARCH_ENV] SEARCH_CLIENT="${process.env.SEARCH_CLIENT ?? '(undefined)'}" VERTEX_SERVING_CONFIG="${process.env.VERTEX_SERVING_CONFIG ?? '(undefined)'}" NODE_ENV="${process.env.NODE_ENV}" K_SERVICE="${process.env.K_SERVICE ?? '(undefined)'}" K_REVISION="${process.env.K_REVISION ?? '(undefined)'}"`
+  );
+
+  const { getSearchClient, getSearchClientName } = await import('@/server/search/searchClient');
   const client = getSearchClient();
+  const clientName = getSearchClientName();
+
+  // [SEARCH_ENTRY] 検索入口ログ
+  console.log(
+    `[SEARCH_ENTRY] route=results-ssr q="${q}" selectedClient=${clientName} pageSize=${searchQuery.pageSize ?? 'default'} makerSlug=${searchQuery.makerSlug ?? ''} modelSlug=${searchQuery.modelSlug ?? ''}`
+  );
+
   const searchResult = await client.search(searchQuery);
   const cars = searchResult.items;
+
+  // [SEARCH_OUT] 返却ログ
+  console.log(
+    `[SEARCH_OUT] q="${q}" totalCount=${searchResult.totalCount} items=${cars.length} ids=${cars.slice(0, 10).map((c) => c.id).join(',')}`
+  );
 
   // canonical は /cars/ へ（または null）
   const canonicalUrl = buildAbsoluteUrl(baseUrl as AbsoluteUrl, '/cars/' as Pathname);

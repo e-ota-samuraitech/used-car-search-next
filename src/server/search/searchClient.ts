@@ -63,6 +63,10 @@ class MockSearchClient implements SearchClient {
   async search(query: SearchQuery): Promise<SearchResult> {
     const q = normalizeString(query.q);
 
+    // [MOCK_SEARCH] 常時ログ（Mockが使われた証拠）
+    console.log(`[MOCK_SEARCH] q="${q}" makerSlug=${query.makerSlug ?? ''} modelSlug=${query.modelSlug ?? ''} prefSlug=${query.prefSlug ?? ''}`);
+
+
     const searchParams: SearchParams = {
       q,
       maker: '',
@@ -98,6 +102,9 @@ class MockSearchClient implements SearchClient {
       const start = (Math.floor(page) - 1) * pageSize;
       items = matchedByShop.slice(start, start + pageSize);
     }
+
+    // [MOCK_SEARCH_OUT] 返却直前ログ
+    console.log(`[MOCK_SEARCH_OUT] q="${q}" totalCount=${totalCount} items=${items.length} ids=${items.slice(0, 10).map((c) => c.id).join(',')}`);
 
     return {
       items,
@@ -158,11 +165,15 @@ class ApiSearchClient implements SearchClient {
 }
 
 let cachedClient: SearchClient | null = null;
+let cachedClientName: string | null = null;
 
 export function getSearchClient(): SearchClient {
   if (cachedClient) return cachedClient;
 
   const impl = (process.env.SEARCH_CLIENT ?? 'mock').toLowerCase();
+
+  // [SEARCH_CLIENT_INIT] クライアント初期化ログ（1回だけ出る）
+  console.log(`[SEARCH_CLIENT_INIT] SEARCH_CLIENT="${process.env.SEARCH_CLIENT ?? '(undefined)'}" resolved="${impl}" VERTEX_SERVING_CONFIG="${process.env.VERTEX_SERVING_CONFIG ?? '(undefined)'}" NODE_ENV="${process.env.NODE_ENV}" K_SERVICE="${process.env.K_SERVICE ?? '(undefined)'}"`);
 
   if (impl === 'vertex') {
     const servingConfig = (process.env.VERTEX_SERVING_CONFIG ?? '').trim();
@@ -172,6 +183,8 @@ export function getSearchClient(): SearchClient {
     // Dynamic import to avoid bundling @google-cloud/discoveryengine in client
     const { VertexSearchClient } = require('./vertex/vertexSearchClient');
     cachedClient = new VertexSearchClient(servingConfig) as SearchClient;
+    cachedClientName = 'vertex';
+    console.log(`[SEARCH_CLIENT_INIT] => Created VertexSearchClient`);
     return cachedClient;
   }
 
@@ -181,9 +194,17 @@ export function getSearchClient(): SearchClient {
       throw new Error('SEARCH_API_BASE_URL is required when SEARCH_CLIENT=api');
     }
     cachedClient = new ApiSearchClient(baseUrl);
+    cachedClientName = 'api';
+    console.log(`[SEARCH_CLIENT_INIT] => Created ApiSearchClient baseUrl=${baseUrl}`);
     return cachedClient;
   }
 
   cachedClient = new MockSearchClient();
+  cachedClientName = 'mock';
+  console.log(`[SEARCH_CLIENT_INIT] => Created MockSearchClient (default fallback)`);
   return cachedClient;
+}
+
+export function getSearchClientName(): string {
+  return cachedClientName ?? 'unknown';
 }

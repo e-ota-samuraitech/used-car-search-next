@@ -20,9 +20,8 @@ type DiscoverySearchResultItem = {
   modelScores?: Record<string, { values?: number[] }>;
 };
 
-type DiscoverySearchResponse = {
-  totalSize?: unknown;
-};
+// ✅ facets を含む “本物の” SearchResponse 型にする
+type DiscoverySearchResponse = protos.google.cloud.discoveryengine.v1.SearchResponse;
 
 /**
  * pageSize を 1..100 に clamp
@@ -188,6 +187,105 @@ function buildStrictFilter(existingFilter: string | undefined, modelName: string
   return modelFilter;
 }
 
+/**
+ * facets デバッグログを出力するか
+ * - DEBUG_VERTEX_FACETS=1|true で有効
+ * - 本番でも明示的にONなら出る（ただし facets 要約のみ）
+ */
+function shouldLogFacets(): boolean {
+  const raw = getEnvString('DEBUG_VERTEX_FACETS').toLowerCase();
+  return raw === '1' || raw === 'true';
+}
+
+/**
+ * facets を軽量に要約（大量ログ防止）
+ */
+function summarizeFacets(resp: DiscoverySearchResponse | undefined) {
+  const facets = resp?.facets ?? [];
+  return facets.map((f: any) => ({
+    // 環境/バージョン差異に備えて複数候補を見る
+    key: f.key ?? f.facetKey?.key ?? '(unknown)',
+    values: (f.values ?? []).slice(0, 10).map((v: any) => ({
+      value: v.value,
+      count: v.count,
+    })),
+  }));
+}
+
+function getCtorName(value: unknown): string {
+  if (!value || typeof value !== 'object') return '';
+  const ctor = (value as any).constructor;
+  return typeof ctor?.name === 'string' ? ctor.name : '';
+}
+
+function longLikeToNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value === null || value === undefined) return undefined;
+  const maybe = value as any;
+  if (typeof maybe?.toNumber === 'function') {
+    const n = maybe.toNumber();
+    return typeof n === 'number' && Number.isFinite(n) ? n : undefined;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function summarizeFacetSpecs(request: DiscoverySearchRequest): { facetSpecsLen: number; facetKeys: string[] } {
+  const facetSpecs = ((request as any)?.facetSpecs ?? []) as any[];
+  const keys = facetSpecs
+    .map((fs) => fs?.facetKey?.key ?? fs?.facetKey ?? fs?.key)
+    .filter((k) => typeof k === 'string' && k.trim().length > 0)
+    .map((k) => String(k));
+  return { facetSpecsLen: facetSpecs.length, facetKeys: keys };
+}
+
+function logVertexReqDump(params: {
+  q: string;
+  servingConfig: string;
+  request: DiscoverySearchRequest;
+  label?: string;
+}) {
+  const { q, servingConfig, request, label } = params;
+  const { facetSpecsLen, facetKeys } = summarizeFacetSpecs(request);
+  const hasQueryExpansionSpec = (request as any)?.queryExpansionSpec !== undefined;
+  const hasSpellCorrectionSpec = (request as any)?.spellCorrectionSpec !== undefined;
+
+  console.log(
+    `[VERTEX_REQ_DUMP]${label ? ` label=${label}` : ''} q="${q}" servingConfig=${servingConfig} filter="${(request as any)?.filter ?? ''}" pageSize=${(request as any)?.pageSize ?? ''} offset=${(request as any)?.offset ?? ''} facetSpecsLen=${facetSpecsLen} facetKeys=${JSON.stringify(
+      facetKeys,
+    )} hasQueryExpansionSpec=${hasQueryExpansionSpec} hasSpellCorrectionSpec=${hasSpellCorrectionSpec}`,
+  );
+}
+
+function logVertexResShape(params: {
+  q: string;
+  response: unknown;
+  results: unknown;
+  label?: string;
+}) {
+  const { q, response, results, label } = params;
+  const type = response === null ? 'null' : typeof response;
+  const ctor = getCtorName(response) || '(unknown)';
+
+  const totalSizeRaw = (response as any)?.totalSize;
+  const totalSizeNum = longLikeToNumber(totalSizeRaw);
+  const hasTotalSize = totalSizeRaw !== undefined;
+
+  const facets = (response as any)?.facets;
+  const hasFacets = Array.isArray(facets);
+  const facetsLen = hasFacets ? facets.length : undefined;
+
+  const resultsLen = Array.isArray(results) ? results.length : undefined;
+
+  const isArray = Array.isArray(response);
+  const isAsyncIterable = typeof (response as any)?.[Symbol.asyncIterator] === 'function';
+  const isIterable = typeof (response as any)?.[Symbol.iterator] === 'function';
+
+  console.log(
+    `[VERTEX_RES_SHAPE]${label ? ` label=${label}` : ''} q="${q}" type=${type} ctor=${ctor} hasTotalSize=${hasTotalSize} totalSize=${totalSizeNum ?? '(n/a)'} hasFacets=${hasFacets} facetsLen=${facetsLen ?? '(n/a)'} resultsLen=${resultsLen ?? '(n/a)'} isArray=${isArray} isAsyncIterable=${isAsyncIterable} isIterable=${isIterable}`,
+  );
+}
+
 export class VertexSearchClient implements SearchClient {
   private readonly client: SearchServiceClient;
   private readonly servingConfig: string;
@@ -205,6 +303,9 @@ export class VertexSearchClient implements SearchClient {
     const orderBy = sortToOrderBy(query.sort);
 
     const q = normalizeQueryString(query.q);
+
+    // [VERTEX_IN] 入口ログ（常時出力 - Vertexが呼ばれた証拠）
+    console.log(`[VERTEX_IN] q="${q}" servingConfig=${this.servingConfig} filter="${filter ?? ''}" pageSize=${pageSize} offset=${offset}`);
     const shouldApplyQueryTuning = q.length > 0;
 
     const languageCode = shouldApplyQueryTuning ? parseLanguageCode() : undefined;
@@ -273,9 +374,23 @@ export class VertexSearchClient implements SearchClient {
             console.log('[VertexSearchClient] trying strict search with filter:', strictFilter);
           }
 
+          logVertexReqDump({ q, servingConfig: this.servingConfig, request: strictRequest, label: 'strict' });
           const [r, , resp] = await this.client.search(strictRequest);
           const strictResults = r as unknown as DiscoverySearchResultItem[];
           const strictResponse = resp as unknown as DiscoverySearchResponse | undefined;
+
+          logVertexResShape({ q, response: strictResponse, results: strictResults, label: 'strict' });
+
+          if (shouldLogFacets()) {
+            console.log(
+              '[VertexSearchClient][DEBUG] facetSpecs(strict)=',
+              JSON.stringify((strictRequest as any).facetSpecs ?? [], null, 2),
+            );
+            console.log(
+              '[VertexSearchClient][DEBUG] facets(strict)=',
+              JSON.stringify(summarizeFacets(strictResponse), null, 2),
+            );
+          }
 
           // 1件以上あれば strict 検索結果を採用
           if (strictResults.length > 0) {
@@ -296,7 +411,10 @@ export class VertexSearchClient implements SearchClient {
         } catch (strictError) {
           // INVALID_ARGUMENT（model が filterable でない等）→ warn して通常検索へ
           if (isInvalidArgumentError(strictError)) {
-            console.warn('[VertexSearchClient] strict search failed (INVALID_ARGUMENT), falling back to normal search. Filter was:', strictFilter);
+            console.warn(
+              '[VertexSearchClient] strict search failed (INVALID_ARGUMENT), falling back to normal search. Filter was:',
+              strictFilter,
+            );
           } else {
             // その他のエラーは warn だけ出して通常検索へ
             console.warn('[VertexSearchClient] strict search failed, falling back to normal search:', strictError);
@@ -307,17 +425,45 @@ export class VertexSearchClient implements SearchClient {
       // strict 検索を使わなかった/失敗した場合、通常検索を実行
       if (!usedStrictSearch) {
         try {
+          logVertexReqDump({ q, servingConfig: this.servingConfig, request: tunedRequest, label: 'normal' });
           const [r, , resp] = await this.client.search(tunedRequest);
           results = r as unknown as DiscoverySearchResultItem[];
           response = resp as unknown as DiscoverySearchResponse | undefined;
+
+          logVertexResShape({ q, response, results, label: 'normal' });
+
+          if (shouldLogFacets()) {
+            console.log(
+              '[VertexSearchClient][DEBUG] facetSpecs=',
+              JSON.stringify((tunedRequest as any).facetSpecs ?? [], null, 2),
+            );
+            console.log(
+              '[VertexSearchClient][DEBUG] facets=',
+              JSON.stringify(summarizeFacets(response), null, 2),
+            );
+          }
         } catch (error) {
           // If query tuning fields are rejected (e.g., INVALID_ARGUMENT), retry once without them.
           const usedTuningFields = tunedRequest !== baseRequest && shouldApplyQueryTuning;
           if (usedTuningFields && isInvalidArgumentError(error)) {
             console.warn('[VertexSearchClient] search request rejected (invalid argument). Retrying without query tuning fields.');
+            logVertexReqDump({ q, servingConfig: this.servingConfig, request: baseRequest, label: 'retry_base' });
             const [r, , resp] = await this.client.search(baseRequest);
             results = r as unknown as DiscoverySearchResultItem[];
             response = resp as unknown as DiscoverySearchResponse | undefined;
+
+            logVertexResShape({ q, response, results, label: 'retry_base' });
+
+            if (shouldLogFacets()) {
+              console.log(
+                '[VertexSearchClient][DEBUG] facetSpecs(retry_base)=',
+                JSON.stringify((baseRequest as any).facetSpecs ?? [], null, 2),
+              );
+              console.log(
+                '[VertexSearchClient][DEBUG] facets(retry_base)=',
+                JSON.stringify(summarizeFacets(response), null, 2),
+              );
+            }
           } else {
             throw error;
           }
@@ -328,11 +474,16 @@ export class VertexSearchClient implements SearchClient {
 
       // results を Car[] に変換
       const items: Car[] = [];
+      let skippedNoDoc = 0;
+      let skippedNoStruct = 0;
+      let skippedMapping = 0;
+      const skippedIds: string[] = [];
 
       for (const result of results) {
         // result.document.structData を取得
         const document = result.document;
         if (!document) {
+          skippedNoDoc++;
           continue;
         }
 
@@ -340,6 +491,7 @@ export class VertexSearchClient implements SearchClient {
         // fields プロパティから値を抽出する必要がある
         const structData = extractStructData(document.structData);
         if (!structData) {
+          skippedNoStruct++;
           continue;
         }
 
@@ -348,18 +500,28 @@ export class VertexSearchClient implements SearchClient {
           items.push(car);
         } else {
           // 必須フィールド欠損の警告
-          const docId = typeof structData === 'object' && structData !== null
-            ? (structData as Record<string, unknown>)['id']
-            : 'unknown';
+          const docId =
+            typeof structData === 'object' && structData !== null
+              ? String((structData as Record<string, unknown>)['id'] ?? 'unknown')
+              : 'unknown';
           const missing = getMissingRequiredFields(structData);
           console.warn(`[VertexSearchClient] skipping document ${docId}: missing fields [${missing.join(', ')}]`);
+          skippedMapping++;
+          if (skippedIds.length < 10) skippedIds.push(docId);
         }
+      }
+
+      // [DEBUG_MAPPING] 変換時のスキップ集計
+      if (skippedNoDoc > 0 || skippedNoStruct > 0 || skippedMapping > 0) {
+        console.log(
+          `[VertexSearchClient][DEBUG_MAPPING] q="${q}" resultsRaw=${results.length} skippedNoDoc=${skippedNoDoc} skippedNoStruct=${skippedNoStruct} skippedMapping=${skippedMapping} skippedIds=${skippedIds.join(',')}`,
+        );
       }
 
       // totalCount の取得（response から）
       // totalSize は Long 型で返される可能性がある
       let totalCount: number;
-      const rawTotalSize = response?.totalSize;
+      const rawTotalSize = response?.totalSize as unknown;
       if (typeof rawTotalSize === 'number') {
         totalCount = rawTotalSize;
       } else if (rawTotalSize !== null && rawTotalSize !== undefined) {
@@ -407,12 +569,31 @@ export class VertexSearchClient implements SearchClient {
         });
       }
 
+      // [DEBUG_ITEMS] SSR 突合用の返却直前ログ
+      console.log(
+        `[VertexSearchClient][DEBUG_ITEMS] q="${q}" resultsRaw=${results.length} itemsMapped=${items.length} ids=${items.slice(0, 10).map((c) => c.id).join(',')}`,
+      );
+
       return {
         items,
         totalCount,
         lastUpdatedAt: computeLastUpdatedAtIso(items),
       };
     } catch (error) {
+      const message =
+        error && typeof error === 'object' && 'message' in (error as any) ? String((error as any).message) : String(error);
+      const stackRaw =
+        error && typeof error === 'object' && 'stack' in (error as any) ? String((error as any).stack) : '';
+      const stackShort = stackRaw
+        ? stackRaw
+            .split('\n')
+            .slice(0, 6)
+            .map((s) => s.trim())
+            .join(' | ')
+        : '';
+      console.error(
+        `[VERTEX_ERR] q="${q}" message="${message.replace(/\s+/g, ' ').slice(0, 500)}" stack="${stackShort.slice(0, 1500)}"`,
+      );
       console.error('[VertexSearchClient] search error:', error);
       throw error;
     }
