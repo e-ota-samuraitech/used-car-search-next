@@ -25,7 +25,6 @@ export interface SearchQuery {
 
   minMan?: string;
   maxMan?: string;
-  priceChangedOnly?: boolean;
 
   page?: number;
   pageSize?: number;
@@ -88,7 +87,6 @@ class MockSearchClient implements SearchClient {
       city: '',
       minMan: normalizeString(query.minMan),
       maxMan: normalizeString(query.maxMan),
-      priceChangedOnly: !!query.priceChangedOnly,
       makerSlug: normalizeString(query.makerSlug) || undefined,
       modelSlug: normalizeString(query.modelSlug) || undefined,
       prefSlug: normalizeString(query.prefSlug) || undefined,
@@ -143,7 +141,6 @@ class ApiSearchClient implements SearchClient {
     if (query.featureSlug) url.searchParams.set('feature', query.featureSlug);
     if (query.minMan) url.searchParams.set('minMan', query.minMan);
     if (query.maxMan) url.searchParams.set('maxMan', query.maxMan);
-    if (query.priceChangedOnly) url.searchParams.set('priceChangedOnly', 'true');
     if (typeof query.page === 'number' && query.page > 0) url.searchParams.set('page', String(query.page));
 
     // pageSize is MVP-fixed. We allow passing it (non-URL-controlled in our app),

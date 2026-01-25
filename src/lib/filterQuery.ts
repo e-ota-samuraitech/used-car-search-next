@@ -23,8 +23,6 @@ export interface FilterState {
   min: string;
   /** 価格上限（万円） */
   max: string;
-  /** 価格変動ありのみ */
-  priceChanged: boolean;
 }
 
 export const EMPTY_FILTER_STATE: FilterState = {
@@ -34,7 +32,6 @@ export const EMPTY_FILTER_STATE: FilterState = {
   city: '',
   min: '',
   max: '',
-  priceChanged: false,
 };
 
 // ============================================
@@ -74,12 +71,9 @@ export function parseFilterQuery(
   const min = toSingleString(query.min);
   const max = toSingleString(query.max);
 
-  // pc=1 または priceChangedOnly=true
-  const pcRaw = toSingleString(query.pc).toLowerCase();
-  const pcOldRaw = toSingleString(query.priceChangedOnly).toLowerCase();
-  const priceChanged = pcRaw === '1' || pcRaw === 'true' || pcOldRaw === '1' || pcOldRaw === 'true';
+  // Note: pc/priceChangedOnly params are now ignored (feature removed)
 
-  return { makers, features, pref, city, min, max, priceChanged };
+  return { makers, features, pref, city, min, max };
 }
 
 /**
@@ -153,11 +147,6 @@ export function buildFilterQueryParams(options: BuildQueryOptions): URLSearchPar
   }
   if (filter.max.trim()) {
     params.set('max', filter.max.trim());
-  }
-
-  // pc
-  if (filter.priceChanged) {
-    params.set('pc', '1');
   }
 
   // page（1より大きい場合のみ）
@@ -242,8 +231,7 @@ export function isFilterEmpty(filter: FilterState): boolean {
     !filter.pref &&
     !filter.city &&
     !filter.min &&
-    !filter.max &&
-    !filter.priceChanged
+    !filter.max
   );
 }
 

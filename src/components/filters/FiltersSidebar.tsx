@@ -151,7 +151,6 @@ interface SelectedFiltersChipsProps {
   onRemovePref: () => void;
   onRemoveCity: () => void;
   onRemovePrice: () => void;
-  onRemovePriceChanged: () => void;
   onClearAll: () => void;
 }
 
@@ -165,7 +164,6 @@ function SelectedFiltersChips({
   onRemovePref,
   onRemoveCity,
   onRemovePrice,
-  onRemovePriceChanged,
   onClearAll,
 }: SelectedFiltersChipsProps) {
   const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
@@ -219,15 +217,6 @@ function SelectedFiltersChips({
       key: 'price',
       label: priceLabel,
       onRemove: onRemovePrice,
-    });
-  }
-
-  // 価格変動
-  if (filter.priceChanged) {
-    chips.push({
-      key: 'priceChanged',
-      label: '価格変動あり',
-      onRemove: onRemovePriceChanged,
     });
   }
 
@@ -483,11 +472,6 @@ export default function FiltersSidebar({
     [currentFilter, updateFilter]
   );
 
-  // 価格変動
-  const handlePriceChangedToggle = useCallback(() => {
-    updateFilter({ ...currentFilter, priceChanged: !currentFilter.priceChanged });
-  }, [currentFilter, updateFilter]);
-
   // ============================================
   // チップ削除ハンドラ
   // ============================================
@@ -524,10 +508,6 @@ export default function FiltersSidebar({
     updateFilter({ ...currentFilter, min: '', max: '' });
   }, [currentFilter, updateFilter]);
 
-  const handleRemovePriceChanged = useCallback(() => {
-    updateFilter({ ...currentFilter, priceChanged: false });
-  }, [currentFilter, updateFilter]);
-
   const handleClearAll = useCallback(() => {
     pushFilterReset(router, { q: currentQ, sort: currentSort });
   }, [router, currentQ, currentSort]);
@@ -555,7 +535,6 @@ export default function FiltersSidebar({
           onRemovePref={handleRemovePref}
           onRemoveCity={handleRemoveCity}
           onRemovePrice={handleRemovePrice}
-          onRemovePriceChanged={handleRemovePriceChanged}
           onClearAll={handleClearAll}
         />
       )}
@@ -604,21 +583,6 @@ export default function FiltersSidebar({
         max={currentFilter.max}
         onApply={handlePriceApply}
       />
-
-      {/* 価格変動 */}
-      <div className="mb-4">
-        <label className="flex items-center gap-2 cursor-pointer text-sm">
-          <input
-            type="checkbox"
-            checked={currentFilter.priceChanged}
-            onChange={handlePriceChangedToggle}
-            className="accent-blue-600"
-          />
-          <span className={currentFilter.priceChanged ? 'text-blue-600 font-medium' : 'text-gray-700'}>
-            価格変動ありのみ
-          </span>
-        </label>
-      </div>
     </>
   );
 

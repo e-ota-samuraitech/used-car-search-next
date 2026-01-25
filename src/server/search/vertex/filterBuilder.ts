@@ -31,7 +31,6 @@ function buildAnyFilter(field: string, values: string[]): string | null {
  * - maker/model/pref/city: `${field}Slug: ANY("value")`
  * - feature: `featureSlugs: ANY("value1","value2")`（複数OR）
  * - price: `priceYen: IN(minYen, maxYen)`
- * - priceChangedOnly: `priceChanged = true`
  *
  * @returns filter 文字列。条件がなければ undefined
  */
@@ -94,11 +93,7 @@ export function buildFilter(query: SearchQuery): string | undefined {
     conditions.push(`priceYen <= ${maxYen}`);
   }
 
-  // priceChangedOnly: boolean フィールド priceChanged = true
-  // フォールバック: priceChanged = 1 も試す（Vertex構文差異対応）
-  if (query.priceChangedOnly) {
-    conditions.push(`priceChanged = true`);
-  }
+  // Note: priceChangedOnly filter has been removed
 
   if (conditions.length === 0) {
     return undefined;

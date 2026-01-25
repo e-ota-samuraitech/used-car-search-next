@@ -35,8 +35,7 @@ function normalizeOptionalSort(value: string | string[] | undefined): SearchSort
  * Next.js API query -> SearchQuery (server-side unified input)
  */
 export function parseSearchQuery(query: NextApiRequest['query']): SearchQuery {
-  const priceChangedOnlyStr = normalizeQueryParam(query.priceChangedOnly).trim().toLowerCase();
-  const priceChangedOnly = priceChangedOnlyStr === 'true' || priceChangedOnlyStr === '1';
+  // Note: priceChangedOnly is no longer supported
 
   return {
     q: normalizeQueryParam(query.q).trim() || undefined,
@@ -47,7 +46,6 @@ export function parseSearchQuery(query: NextApiRequest['query']): SearchQuery {
     featureSlug: normalizeOptionalSlug(query.feature),
     minMan: normalizeQueryParam(query.minMan).trim() || undefined,
     maxMan: normalizeQueryParam(query.maxMan).trim() || undefined,
-    priceChangedOnly,
     page: normalizeOptionalNumber(query.page),
     pageSize: normalizeOptionalNumber(query.pageSize),
     sort: normalizeOptionalSort(query.sort),
@@ -56,7 +54,6 @@ export function parseSearchQuery(query: NextApiRequest['query']): SearchQuery {
 
 // Next.jsのreq.queryを正規化してSearchParamsに変換
 export function parseSearchParams(query: NextApiRequest['query']): SearchParams {
-  const priceChangedOnlyStr = normalizeQueryParam(query.priceChangedOnly);
   const makerSlug = normalizeQueryParam(query.maker);
   const modelSlug = normalizeQueryParam(query.model);
   const prefSlug = normalizeQueryParam(query.pref);
@@ -71,7 +68,6 @@ export function parseSearchParams(query: NextApiRequest['query']): SearchParams 
     city: '',
     minMan: normalizeQueryParam(query.minMan),
     maxMan: normalizeQueryParam(query.maxMan),
-    priceChangedOnly: priceChangedOnlyStr === 'true',
 
     featureSlug: featureSlug || undefined,
     makerSlug: makerSlug || undefined,

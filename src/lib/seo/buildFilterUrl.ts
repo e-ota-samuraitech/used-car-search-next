@@ -23,7 +23,6 @@ export interface FilterParams {
   featureSlug?: string;
   minMan?: string;
   maxMan?: string;
-  priceChangedOnly?: boolean;
   q?: string;
   sort?: string;
   page?: number;
@@ -124,9 +123,6 @@ export function buildFilterUrl(filters: FilterParams): BuildFilterUrlResult {
   }
   if (filters.maxMan) {
     queryParams.set('maxMan', filters.maxMan);
-  }
-  if (filters.priceChangedOnly) {
-    queryParams.set('priceChangedOnly', 'true');
   }
   if (filters.q) {
     queryParams.set('q', filters.q);

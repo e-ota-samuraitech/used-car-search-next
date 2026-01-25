@@ -62,11 +62,7 @@ export function searchCars(
     results = results.filter(car => car.priceYen <= maxPrice);
   }
 
-  // 価格変動ありのみ
-  // 定義: prevPriceYen が存在し、かつ prevPriceYen !== priceYen
-  if (params.priceChangedOnly) {
-    results = results.filter(car => car.prevPriceYen !== null && car.prevPriceYen !== undefined && car.prevPriceYen !== car.priceYen);
-  }
+  // Note: priceChangedOnly filter has been removed
 
   // キーワード検索（モデル名・メーカー名に含まれるか）
   if (params.q && params.q !== '') {

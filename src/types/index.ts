@@ -42,7 +42,6 @@ export interface Filters {
 
   minMan: string;
   maxMan: string;
-  priceChangedOnly: boolean;
 }
 
 export interface Estimate {

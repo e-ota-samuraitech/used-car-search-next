@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, useRef, FormEvent } from 'react';
 import Footer from '@/components/common/Footer';
 import { useApp } from '@/context/AppContext';
 import { buildSearchUrl } from '@/lib/seo';
@@ -46,6 +46,7 @@ export default function TopPage() {
   const { setQuery, filters } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // 検索開始は submit 時のみ（ログイン遷移等で検索中にならないように）
   useEffect(() => {
@@ -60,14 +61,16 @@ export default function TopPage() {
     };
   }, [router.events]);
 
-  const trimmedQuery = searchQuery.trim();
-  const canSearch = !!trimmedQuery && !isSearching;
-
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
-    const trimmed = searchQuery.trim();
-    if (!trimmed) return;
     if (isSearching) return;
+
+    const trimmed = searchQuery.trim();
+    // 空の場合は入力欄にフォーカス
+    if (!trimmed) {
+      inputRef.current?.focus();
+      return;
+    }
 
     setIsSearching(true);
     setQuery(trimmed);
@@ -84,7 +87,6 @@ export default function TopPage() {
       featureSlug: filters.featureSlug,
       minMan: filters.minMan,
       maxMan: filters.maxMan,
-      priceChangedOnly: filters.priceChangedOnly,
     });
 
     if (next.destination === 'cars') {
@@ -155,6 +157,7 @@ export default function TopPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <input
+                    ref={inputRef}
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -180,7 +183,7 @@ export default function TopPage() {
 
               <button
                 type="submit"
-                disabled={!canSearch}
+                disabled={isSearching}
                 className="px-6 md:px-8 py-2.5 md:py-3 bg-teal-600 text-white text-sm md:text-base font-medium rounded-full hover:bg-teal-700 transition-all shadow-md hover:shadow-lg whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600"
               >
                 {isSearching ? '検索中…' : '検索'}

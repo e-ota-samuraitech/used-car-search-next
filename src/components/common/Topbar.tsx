@@ -33,7 +33,6 @@ const Topbar = ({ variant = 'home' }: TopbarProps) => {
       featureSlug: filters.featureSlug,
       minMan: filters.minMan,
       maxMan: filters.maxMan,
-      priceChangedOnly: filters.priceChangedOnly,
     });
 
     if (next.destination === 'cars') {

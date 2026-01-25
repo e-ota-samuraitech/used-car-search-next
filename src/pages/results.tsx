@@ -55,8 +55,7 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
     !!normalizeQueryValue(urlQuery.city).trim() ||
     !!normalizeQueryValue(urlQuery.feature).trim() ||
     !!normalizeQueryValue(urlQuery.minMan).trim() ||
-    !!normalizeQueryValue(urlQuery.maxMan).trim() ||
-    ['true', '1'].includes(normalizeQueryValue(urlQuery.priceChangedOnly).trim().toLowerCase());
+    !!normalizeQueryValue(urlQuery.maxMan).trim();
 
   if (q && !hasFilters) {
     const upgrade = evaluateQueryUpgrade({ q });
@@ -87,10 +86,6 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   const minMan = filterState.min || normalizeQueryValue(urlQuery.minMan).trim();
   const maxMan = filterState.max || normalizeQueryValue(urlQuery.maxMan).trim();
 
-  // priceChangedOnly：新仕様（pc）優先
-  const priceChangedOnlyRaw = normalizeQueryValue(urlQuery.priceChangedOnly).trim().toLowerCase();
-  const priceChangedOnly = filterState.priceChanged || priceChangedOnlyRaw === 'true' || priceChangedOnlyRaw === '1';
-
   // ページネーション用パラメータ
   const PAGE_SIZE = 20;
   const pageRaw = parseInt(normalizeQueryValue(urlQuery.page).trim(), 10);
@@ -111,7 +106,6 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
     featureSlugs: featureSlugs?.length ? featureSlugs : undefined,
     minMan: minMan || undefined,
     maxMan: maxMan || undefined,
-    priceChangedOnly,
     page,
     pageSize: PAGE_SIZE,
   };

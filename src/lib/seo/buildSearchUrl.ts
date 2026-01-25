@@ -15,7 +15,6 @@ export interface SearchUrlParams {
   // fine filters (always /results)
   minMan?: string;
   maxMan?: string;
-  priceChangedOnly?: boolean;
 
   // non-canonical params
   sort?: string;
@@ -59,7 +58,6 @@ export function buildSearchUrl(input: SearchUrlParams): BuildSearchUrlResult {
 
   const minMan = normalizeTrim(input.minMan);
   const maxMan = normalizeTrim(input.maxMan);
-  const priceChangedOnly = !!input.priceChangedOnly;
   const sort = normalizeTrim(input.sort);
   const page = input.page;
 
@@ -93,7 +91,7 @@ export function buildSearchUrl(input: SearchUrlParams): BuildSearchUrlResult {
   const validCitySlug = isValidSlugValue(citySlug) ? citySlug : '';
   const validFeatureSlug = isValidSlugValue(featureSlug) ? featureSlug : '';
 
-  const hasFineFilters = !!minMan || !!maxMan || priceChangedOnly;
+  const hasFineFilters = !!minMan || !!maxMan;
   const hasNonCanonical = !!sort || (typeof page === 'number' && page > 1);
   const hasFreeword = !!q;
 
@@ -157,7 +155,6 @@ export function buildSearchUrl(input: SearchUrlParams): BuildSearchUrlResult {
   addIfPresent(queryParams, 'minMan', minMan);
   addIfPresent(queryParams, 'maxMan', maxMan);
 
-  if (priceChangedOnly) queryParams.set('priceChangedOnly', 'true');
   if (sort) queryParams.set('sort', sort);
   if (typeof page === 'number' && page > 1) queryParams.set('page', String(page));
 

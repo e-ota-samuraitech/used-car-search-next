@@ -61,7 +61,6 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
       featureSlug: localFilters.featureSlug,
       minMan: localFilters.minMan,
       maxMan: localFilters.maxMan,
-      priceChangedOnly: localFilters.priceChangedOnly,
     });
 
     window.location.assign(url);
@@ -99,7 +98,6 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
       featureSlug: '',
       minMan: '',
       maxMan: '',
-      priceChangedOnly: false,
     });
 
     // /cars には行かない。q を維持し、filter系/page は落とす。sort は維持。
@@ -216,15 +214,6 @@ const Filters = ({ isModalMode = false, isOpen = true, onClose }: FiltersProps) 
           />
         </div>
       </div>
-
-      <label className="flex gap-2 items-center text-[13px] my-2.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={localFilters.priceChangedOnly}
-          onChange={(e) => setLocalFilters({ ...localFilters, priceChangedOnly: e.target.checked })}
-        />
-        価格変動ありのみ
-      </label>
 
       <div className="flex justify-between mt-3 gap-2">
         <button

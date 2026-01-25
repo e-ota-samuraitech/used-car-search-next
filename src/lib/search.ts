@@ -41,9 +41,6 @@ export interface SeoSearchParams {
   /** 最大価格（万円） */
   maxMan?: string;
 
-  /** 価格変動のみ */
-  priceChangedOnly?: boolean;
-
   /** ページネーション */
   page?: number;
 
@@ -131,12 +128,7 @@ export function parsedUrlToSearchParams(parsed: ParsedUrl): SeoSearchParams {
     if (parsed.query.maxMan) {
       params.maxMan = Array.isArray(parsed.query.maxMan) ? parsed.query.maxMan[0] : parsed.query.maxMan;
     }
-
-    const priceChangedOnlyRaw = parsed.query.priceChangedOnly;
-    const priceChangedOnly = Array.isArray(priceChangedOnlyRaw) ? priceChangedOnlyRaw[0] : priceChangedOnlyRaw;
-    if (priceChangedOnly === 'true') {
-      params.priceChangedOnly = true;
-    }
+    // Note: priceChangedOnly params are now ignored (feature removed)
   }
 
   // ページネーション・ソート
@@ -182,7 +174,6 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
         featureSlug: params.featureSlug,
         minMan: params.minMan,
         maxMan: params.maxMan,
-        priceChangedOnly: params.priceChangedOnly,
         page: params.page,
         sort: normalizeSort(params.sort),
       };
@@ -208,7 +199,6 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
       if (params.featureSlug) queryParams.append('feature', params.featureSlug);
       if (params.minMan) queryParams.append('minMan', params.minMan);
       if (params.maxMan) queryParams.append('maxMan', params.maxMan);
-      if (params.priceChangedOnly) queryParams.append('priceChangedOnly', 'true');
       if (typeof params.page === 'number') queryParams.append('page', String(params.page));
       const sort = normalizeSort(params.sort);
       if (sort) queryParams.append('sort', sort);

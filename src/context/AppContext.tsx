@@ -56,7 +56,6 @@ const defaultFilters: Filters = {
   featureSlug: '',
   minMan: '',
   maxMan: '',
-  priceChangedOnly: false,
 };
 
 interface AppProviderProps {
@@ -102,7 +101,6 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       if (effectiveFilters.featureSlug) params.append('feature', effectiveFilters.featureSlug);
       if (effectiveFilters.minMan) params.append('minMan', effectiveFilters.minMan);
       if (effectiveFilters.maxMan) params.append('maxMan', effectiveFilters.maxMan);
-      if (effectiveFilters.priceChangedOnly) params.append('priceChangedOnly', 'true');
 
       // API呼び出し
       const response = await fetch(`/api/search?${params.toString()}`);

@@ -6,7 +6,6 @@ export interface SearchParams {
   city: string;
   minMan: string;
   maxMan: string;
-  priceChangedOnly: boolean;
 
   /** feature slug（例: hybrid） */
   featureSlug?: string;

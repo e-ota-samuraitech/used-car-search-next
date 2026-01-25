@@ -81,7 +81,6 @@ const SearchBar = ({ onSearch, variant = 'large', isNavigating = false, placehol
       featureSlug: filters.featureSlug,
       minMan: filters.minMan,
       maxMan: filters.maxMan,
-      priceChangedOnly: filters.priceChangedOnly,
     });
 
     if (next.destination === 'cars') {
