@@ -67,10 +67,21 @@ function main(): void {
 
     const docId = record['id'];
 
-    // Discovery Engine 形式に変換
+    // priceChanged を計算（prevPriceYen !== priceYen）
+    const priceYen = record['priceYen'];
+    const prevPriceYen = record['prevPriceYen'];
+    const priceChanged =
+      typeof priceYen === 'number' &&
+      typeof prevPriceYen === 'number' &&
+      priceYen !== prevPriceYen;
+
+    // Discovery Engine 形式に変換（priceChanged を追加）
     const doc: DiscoveryEngineDocument = {
       id: docId,
-      structData: record,
+      structData: {
+        ...record,
+        priceChanged,
+      },
     };
 
     outputLines.push(JSON.stringify(doc));

@@ -16,7 +16,7 @@ import { useState } from 'react';
 import Layout from '@/components/common/Layout';
 import { SeoHead } from '@/components/seo/SeoHead';
 import ResultsList from '@/components/results/ResultsList';
-import Filters from '@/components/filters/Filters';
+import FiltersSidebar from '@/components/filters/FiltersSidebar';
 import ResultsShell from '@/components/results/ResultsShell';
 import CampaignSidebar from '@/components/results/CampaignSidebar';
 import CarDetail from '@/components/detail/CarDetail';
@@ -32,6 +32,7 @@ import {
 } from '@/lib/seo';
 import { executeSearchFromParsedUrl } from '@/lib/search';
 import { getSearchClient } from '@/server/search/searchClient';
+import type { Facet } from '@/server/search/searchClient';
 import type { FeatureContent } from '@/lib/seo/featureContent';
 import { getFeatureContent } from '@/lib/seo/featureContent';
 
@@ -59,6 +60,7 @@ interface CatchAllCarsPageProps {
   pathname: string;
   car?: Car | null;
   featureContent?: FeatureContent | null;
+  facets: Facet[];
 }
 
 type SegmentsParam = string[] | string | undefined;
@@ -247,6 +249,7 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
           totalCount: 1,
           pathname,
           car,
+          facets: [],
         },
       };
     }
@@ -284,6 +287,7 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
         pathname,
         car: null,
         featureContent,
+        facets: searchResult.facets,
       },
     };
   } catch (error) {
@@ -294,7 +298,7 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
   }
 };
 
-export default function CatchAllCarsPage({ seo, cars, totalCount, car, featureContent }: CatchAllCarsPageProps) {
+export default function CatchAllCarsPage({ seo, cars, totalCount, car, featureContent, facets }: CatchAllCarsPageProps) {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // 車両詳細ページ（detail分岐）は現状維持
@@ -343,13 +347,13 @@ export default function CatchAllCarsPage({ seo, cars, totalCount, car, featureCo
           </button>
           {isMobileFilterOpen && (
             <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
-              <Filters isOpen={true} />
+              <FiltersSidebar facets={facets} isOpen={true} />
             </div>
           )}
         </div>
 
         <ResultsShell
-          left={<Filters isOpen={true} />}
+          left={<FiltersSidebar facets={facets} isOpen={true} />}
           right={<CampaignSidebar />}
         >
           {/* 結果件数 */}

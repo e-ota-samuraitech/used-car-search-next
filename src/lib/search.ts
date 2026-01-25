@@ -5,7 +5,7 @@
 
 import type { Car } from '@/types';
 import type { ParsedUrl } from './seo/types';
-import type { SearchQuery, SearchSort } from '@/server/search/searchClient';
+import type { SearchQuery, SearchSort, Facet } from '@/server/search/searchClient';
 
 function normalizeSort(value: string | undefined): SearchSort | undefined {
   if (!value) return undefined;
@@ -72,6 +72,9 @@ export interface SearchResult {
 
   /** 検索に使用したパラメータ */
   params: SeoSearchParams;
+
+  /** ファセット（絞り込み候補） */
+  facets: Facet[];
 }
 
 // ============================================
@@ -191,6 +194,7 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
         totalCount: result.totalCount,
         count: result.items.length,
         params,
+        facets: result.facets ?? [],
       };
     } else {
       // クライアントサイドの場合、APIエンドポイントを呼び出す
@@ -261,6 +265,7 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
         totalCount,
         count: items.length,
         params,
+        facets: [], // API経由では facets は取得しない（SSR前提）
       };
     }
   } catch (error) {
@@ -270,6 +275,7 @@ export async function executeSearch(params: SeoSearchParams): Promise<SearchResu
       totalCount: 0,
       count: 0,
       params,
+      facets: [],
     };
   }
 }

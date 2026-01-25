@@ -19,6 +19,10 @@ export interface SearchQuery {
   modelSlug?: string;
   featureSlug?: string;
 
+  // 複数選択対応（新仕様）
+  makerSlugs?: string[];
+  featureSlugs?: string[];
+
   minMan?: string;
   maxMan?: string;
   priceChangedOnly?: boolean;
@@ -28,10 +32,20 @@ export interface SearchQuery {
   sort?: SearchSort;
 }
 
+export interface FacetValue {
+  value: string;
+  count?: number;
+}
+
+export interface Facet {
+  key: string;
+  values: FacetValue[];
+}
+
 export interface SearchResult {
   items: Car[];
   totalCount: number;
-  facets?: unknown;
+  facets?: Facet[];
   lastUpdatedAt?: string;
 }
 

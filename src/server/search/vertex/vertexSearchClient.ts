@@ -4,7 +4,7 @@
 
 import { SearchServiceClient, protos } from '@google-cloud/discoveryengine';
 import type { Car } from '@/types';
-import type { SearchClient, SearchQuery, SearchResult, SearchSort } from '../searchClient';
+import type { SearchClient, SearchQuery, SearchResult, SearchSort, Facet, FacetValue } from '../searchClient';
 import { DEFAULT_PAGE_SIZE } from '../config';
 import { buildFilter } from './filterBuilder';
 import { mapStructDataToCar, getMissingRequiredFields } from './responseMapper';
@@ -312,6 +312,14 @@ export class VertexSearchClient implements SearchClient {
     const queryExpansionCondition = shouldApplyQueryTuning ? parseQueryExpansionCondition() : undefined;
     const spellCorrectionMode = shouldApplyQueryTuning ? parseSpellCorrectionMode() : undefined;
 
+    // facetSpecs: 絞り込み候補値の取得用
+    const facetSpecs = [
+      { facetKey: { key: 'makerSlug' }, limit: 200 },
+      { facetKey: { key: 'prefSlug' }, limit: 100 },
+      { facetKey: { key: 'citySlug' }, limit: 300 },
+      { facetKey: { key: 'featureSlugs' }, limit: 50 },
+    ];
+
     const baseRequest: DiscoverySearchRequest = {
       servingConfig: this.servingConfig,
       query: q,
@@ -319,6 +327,7 @@ export class VertexSearchClient implements SearchClient {
       offset,
       filter,
       orderBy,
+      facetSpecs,
     };
 
     const tunedRequest: DiscoverySearchRequest = {
@@ -375,7 +384,8 @@ export class VertexSearchClient implements SearchClient {
           }
 
           logVertexReqDump({ q, servingConfig: this.servingConfig, request: strictRequest, label: 'strict' });
-          const [r, , resp] = await this.client.search(strictRequest);
+          // autoPaginate: false で手動ページング（totalSize/facets 取得のため）
+          const [r, , resp] = await this.client.search(strictRequest, { autoPaginate: false });
           const strictResults = r as unknown as DiscoverySearchResultItem[];
           const strictResponse = resp as unknown as DiscoverySearchResponse | undefined;
 
@@ -426,7 +436,8 @@ export class VertexSearchClient implements SearchClient {
       if (!usedStrictSearch) {
         try {
           logVertexReqDump({ q, servingConfig: this.servingConfig, request: tunedRequest, label: 'normal' });
-          const [r, , resp] = await this.client.search(tunedRequest);
+          // autoPaginate: false で手動ページング（totalSize/facets 取得のため）
+          const [r, , resp] = await this.client.search(tunedRequest, { autoPaginate: false });
           results = r as unknown as DiscoverySearchResultItem[];
           response = resp as unknown as DiscoverySearchResponse | undefined;
 
@@ -448,9 +459,10 @@ export class VertexSearchClient implements SearchClient {
           if (usedTuningFields && isInvalidArgumentError(error)) {
             console.warn('[VertexSearchClient] search request rejected (invalid argument). Retrying without query tuning fields.');
             logVertexReqDump({ q, servingConfig: this.servingConfig, request: baseRequest, label: 'retry_base' });
-            const [r, , resp] = await this.client.search(baseRequest);
-            results = r as unknown as DiscoverySearchResultItem[];
-            response = resp as unknown as DiscoverySearchResponse | undefined;
+            // autoPaginate: false で手動ページング
+            const [r2, , resp2] = await this.client.search(baseRequest, { autoPaginate: false });
+            results = r2 as unknown as DiscoverySearchResultItem[];
+            response = resp2 as unknown as DiscoverySearchResponse | undefined;
 
             logVertexResShape({ q, response, results, label: 'retry_base' });
 
@@ -574,9 +586,16 @@ export class VertexSearchClient implements SearchClient {
         `[VertexSearchClient][DEBUG_ITEMS] q="${q}" resultsRaw=${results.length} itemsMapped=${items.length} ids=${items.slice(0, 10).map((c) => c.id).join(',')}`,
       );
 
+      // facets の抽出
+      const facets = extractFacets(response);
+      if (shouldLogDebug()) {
+        console.log(`[VertexSearchClient][FACETS] q="${q}" facetsCount=${facets.length} keys=${facets.map(f => f.key).join(',')}`);
+      }
+
       return {
         items,
         totalCount,
+        facets,
         lastUpdatedAt: computeLastUpdatedAtIso(items),
       };
     } catch (error) {
@@ -694,4 +713,50 @@ function convertProtobufValue(value: unknown): unknown {
 
   // その他（すでに変換済みの値の可能性）
   return value;
+}
+
+/**
+ * Discovery Engine の SearchResponse から Facet[] を抽出
+ */
+function extractFacets(response: DiscoverySearchResponse | undefined): Facet[] {
+  if (!response) return [];
+
+  const rawFacets = response.facets;
+  if (!Array.isArray(rawFacets) || rawFacets.length === 0) {
+    return [];
+  }
+
+  const result: Facet[] = [];
+
+  for (const rawFacet of rawFacets) {
+    // key の取得（バージョン差異に備えて複数候補）
+    const key = (rawFacet as any)?.key ?? (rawFacet as any)?.facetKey?.key;
+    if (typeof key !== 'string' || !key) continue;
+
+    const rawValues = (rawFacet as any)?.values;
+    if (!Array.isArray(rawValues)) continue;
+
+    const values: FacetValue[] = [];
+    for (const rv of rawValues) {
+      const value = rv?.value;
+      if (typeof value !== 'string' || !value) continue;
+
+      // count は Long 型の可能性
+      let count: number | undefined;
+      const rawCount = rv?.count;
+      if (typeof rawCount === 'number') {
+        count = rawCount;
+      } else if (rawCount && typeof (rawCount as any).toNumber === 'function') {
+        count = (rawCount as any).toNumber();
+      }
+
+      values.push({ value, count });
+    }
+
+    if (values.length > 0) {
+      result.push({ key, values });
+    }
+  }
+
+  return result;
 }

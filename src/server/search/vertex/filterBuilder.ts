@@ -12,13 +12,26 @@ function escapeSlug(value: string): string {
 }
 
 /**
+ * 複数値を ANY("a","b","c") 形式に変換
+ */
+function buildAnyFilter(field: string, values: string[]): string | null {
+  const escaped = values
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0)
+    .map((v) => `"${escapeSlug(v)}"`);
+
+  if (escaped.length === 0) return null;
+  return `${field}: ANY(${escaped.join(',')})`;
+}
+
+/**
  * SearchQuery から Vertex AI Search の filter 文字列を生成
  *
  * フィルタ形式:
  * - maker/model/pref/city: `${field}Slug: ANY("value")`
- * - feature: `featureSlugs: ANY("value")`
+ * - feature: `featureSlugs: ANY("value1","value2")`（複数OR）
  * - price: `priceYen: IN(minYen, maxYen)`
- * - priceChangedOnly: `priceChanged = 1`
+ * - priceChangedOnly: `priceChanged = true`
  *
  * @returns filter 文字列。条件がなければ undefined
  */
@@ -36,9 +49,11 @@ export function buildFilter(query: SearchQuery): string | undefined {
     conditions.push(`id: ANY("${escapeSlug(query.id)}")`);
   }
 
-  // makerSlug
-  if (query.makerSlug) {
-    conditions.push(`makerSlug: ANY("${escapeSlug(query.makerSlug)}")`);
+  // makerSlug（複数対応：makerSlugs 優先、なければ makerSlug）
+  const makerValues = query.makerSlugs?.length ? query.makerSlugs : query.makerSlug ? [query.makerSlug] : [];
+  const makerFilter = buildAnyFilter('makerSlug', makerValues);
+  if (makerFilter) {
+    conditions.push(makerFilter);
   }
 
   // modelSlug
@@ -56,9 +71,11 @@ export function buildFilter(query: SearchQuery): string | undefined {
     conditions.push(`citySlug: ANY("${escapeSlug(query.citySlug)}")`);
   }
 
-  // featureSlugs（配列フィールド）
-  if (query.featureSlug) {
-    conditions.push(`featureSlugs: ANY("${escapeSlug(query.featureSlug)}")`);
+  // featureSlugs（複数対応：featureSlugs 優先、なければ featureSlug）
+  const featureValues = query.featureSlugs?.length ? query.featureSlugs : query.featureSlug ? [query.featureSlug] : [];
+  const featureFilter = buildAnyFilter('featureSlugs', featureValues);
+  if (featureFilter) {
+    conditions.push(featureFilter);
   }
 
   // 価格レンジ（万円 → 円変換）
@@ -77,9 +94,10 @@ export function buildFilter(query: SearchQuery): string | undefined {
     conditions.push(`priceYen <= ${maxYen}`);
   }
 
-  // priceChangedOnly: 派生フィールド priceChanged = 1
+  // priceChangedOnly: boolean フィールド priceChanged = true
+  // フォールバック: priceChanged = 1 も試す（Vertex構文差異対応）
   if (query.priceChangedOnly) {
-    conditions.push(`priceChanged = 1`);
+    conditions.push(`priceChanged = true`);
   }
 
   if (conditions.length === 0) {

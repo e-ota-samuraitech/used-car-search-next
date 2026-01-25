@@ -12,14 +12,15 @@ import { useRouter } from 'next/router';
 import Layout from '@/components/common/Layout';
 import { SeoHead } from '@/components/seo/SeoHead';
 import ResultsList from '@/components/results/ResultsList';
-import Filters from '@/components/filters/Filters';
+import FiltersSidebar from '@/components/filters/FiltersSidebar';
 import ResultsShell from '@/components/results/ResultsShell';
 import CampaignSidebar from '@/components/results/CampaignSidebar';
 import type { Car, SortBy } from '@/types';
 import type { AbsoluteUrl, Pathname } from '@/lib/seo';
 import { buildAbsoluteUrl, normalizeQueryValue, evaluateQueryUpgrade, getBaseUrl } from '@/lib/seo';
-import type { SearchQuery } from '@/server/search/searchClient';
+import type { SearchQuery, Facet } from '@/server/search/searchClient';
 import { useApp } from '@/context/AppContext';
+import { parseFilterQuery, toStringArray } from '@/lib/filterQuery';
 
 // ============================================
 // ページProps
@@ -30,6 +31,9 @@ interface ResultsPageProps {
   totalCount: number;
   query: string;
   canonicalUrl: string | null;
+  page: number;
+  pageSize: number;
+  facets: Facet[];
 }
 
 // ============================================
@@ -69,27 +73,47 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   }
 
   // 2. 昇格できない → 検索を実行して表示（noindex）
+  // 新仕様：複数選択対応（maker/feat は配列）
+  const filterState = parseFilterQuery(urlQuery as Record<string, string | string[] | undefined>);
+
+  // 旧仕様互換（単一値）
   const makerSlug = normalizeQueryValue(urlQuery.maker).trim().toLowerCase();
   const modelSlug = normalizeQueryValue(urlQuery.model).trim().toLowerCase();
-  const prefSlug = normalizeQueryValue(urlQuery.pref).trim().toLowerCase();
-  const citySlug = normalizeQueryValue(urlQuery.city).trim().toLowerCase();
+  const prefSlug = filterState.pref || normalizeQueryValue(urlQuery.pref).trim().toLowerCase();
+  const citySlug = filterState.city || normalizeQueryValue(urlQuery.city).trim().toLowerCase();
   const featureSlug = normalizeQueryValue(urlQuery.feature).trim().toLowerCase();
-  const minMan = normalizeQueryValue(urlQuery.minMan).trim();
-  const maxMan = normalizeQueryValue(urlQuery.maxMan).trim();
+
+  // 価格：新仕様（min/max）優先、旧仕様（minMan/maxMan）フォールバック
+  const minMan = filterState.min || normalizeQueryValue(urlQuery.minMan).trim();
+  const maxMan = filterState.max || normalizeQueryValue(urlQuery.maxMan).trim();
+
+  // priceChangedOnly：新仕様（pc）優先
   const priceChangedOnlyRaw = normalizeQueryValue(urlQuery.priceChangedOnly).trim().toLowerCase();
-  const priceChangedOnly = priceChangedOnlyRaw === 'true' || priceChangedOnlyRaw === '1';
+  const priceChangedOnly = filterState.priceChanged || priceChangedOnlyRaw === 'true' || priceChangedOnlyRaw === '1';
+
+  // ページネーション用パラメータ
+  const PAGE_SIZE = 20;
+  const pageRaw = parseInt(normalizeQueryValue(urlQuery.page).trim(), 10);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+
+  // 複数選択対応：makerSlugs / featureSlugs
+  const makerSlugs = filterState.makers.length > 0 ? filterState.makers : (makerSlug ? [makerSlug] : undefined);
+  const featureSlugs = filterState.features.length > 0 ? filterState.features : (featureSlug ? [featureSlug] : undefined);
 
   const searchQuery: SearchQuery = {
     q: q || undefined,
-    makerSlug: makerSlug || undefined,
+    makerSlug: makerSlugs?.length === 1 ? makerSlugs[0] : undefined,
+    makerSlugs: makerSlugs?.length ? makerSlugs : undefined,
     modelSlug: modelSlug || undefined,
     prefSlug: prefSlug || undefined,
     citySlug: citySlug || undefined,
-    featureSlug: featureSlug || undefined,
+    featureSlug: featureSlugs?.length === 1 ? featureSlugs[0] : undefined,
+    featureSlugs: featureSlugs?.length ? featureSlugs : undefined,
     minMan: minMan || undefined,
     maxMan: maxMan || undefined,
     priceChangedOnly,
-    // /results is UX-only; allow sort/page in future, but keep SEO noindex
+    page,
+    pageSize: PAGE_SIZE,
   };
 
   // [SEARCH_ENV] 環境変数ダンプ（クライアント選択の証拠）
@@ -103,7 +127,7 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
 
   // [SEARCH_ENTRY] 検索入口ログ
   console.log(
-    `[SEARCH_ENTRY] route=results-ssr q="${q}" selectedClient=${clientName} pageSize=${searchQuery.pageSize ?? 'default'} makerSlug=${searchQuery.makerSlug ?? ''} modelSlug=${searchQuery.modelSlug ?? ''}`
+    `[SEARCH_ENTRY] route=results-ssr q="${q}" selectedClient=${clientName} page=${page} pageSize=${PAGE_SIZE} makerSlug=${searchQuery.makerSlug ?? ''} modelSlug=${searchQuery.modelSlug ?? ''}`
   );
 
   const searchResult = await client.search(searchQuery);
@@ -130,6 +154,9 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
       totalCount: searchResult.totalCount,
       query: q,
       canonicalUrl,
+      page,
+      pageSize: PAGE_SIZE,
+      facets: searchResult.facets ?? [],
     },
   };
 };
@@ -175,7 +202,7 @@ function sortCars(cars: Car[], sortBy: SortBy): Car[] {
 // ページコンポーネント
 // ============================================
 
-export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: ResultsPageProps) {
+export default function ResultsPage({ cars, totalCount, query, canonicalUrl, page, pageSize, facets }: ResultsPageProps) {
   const router = useRouter();
   const app = useApp();
   const [sortBy, setSortBy] = useState<SortBy>('live');
@@ -234,6 +261,17 @@ export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: R
 
   const renderSource: 'props' | 'context' | 'fallback' = 'props';
   const renderCars = sortedCars;
+
+  // ページネーション
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+
+    // 現在のクエリパラメータを維持しつつ page を更新
+    const newQuery = { ...router.query, page: String(newPage) };
+    router.push({ pathname: router.pathname, query: newQuery }, undefined, { scroll: true });
+  };
 
   const top3 = (list: Car[]) =>
     list.slice(0, 3).map((c) => ({ id: c.id, maker: c.maker, model: c.model }));
@@ -317,28 +355,114 @@ export default function ResultsPage({ cars, totalCount, query, canonicalUrl }: R
           </button>
           {isMobileFilterOpen && (
             <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
-              <Filters isOpen={true} />
+              <FiltersSidebar facets={facets} isOpen={true} />
             </div>
           )}
         </div>
 
         <ResultsShell
-          left={<Filters isOpen={true} />}
+          left={<FiltersSidebar facets={facets} isOpen={true} />}
           right={<CampaignSidebar />}
         >
-          {/* 結果件数 */}
+          {/* 結果件数とページ情報 */}
           <div className="text-xs md:text-sm text-gray-600 mb-4">
-            約 {totalCount} 件の結果
+            約 {totalCount} 件の結果（{page} / {totalPages} ページ）
           </div>
 
           {sortedCars.length > 0 ? (
-            <ResultsList
-              results={renderCars}
-              cardVariant="vertical"
-              debugEnabled={debugEnabled}
-              debugSource={renderSource}
-              isNavigating={isNavigating}
-            />
+            <>
+              <ResultsList
+                results={renderCars}
+                cardVariant="vertical"
+                debugEnabled={debugEnabled}
+                debugSource={renderSource}
+                isNavigating={isNavigating}
+              />
+
+              {/* ページャ */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8 mb-4">
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page <= 1 || isNavigating}
+                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                    type="button"
+                  >
+                    前へ
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {/* 最初のページ */}
+                    {page > 2 && (
+                      <>
+                        <button
+                          onClick={() => handlePageChange(1)}
+                          disabled={isNavigating}
+                          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          type="button"
+                        >
+                          1
+                        </button>
+                        {page > 3 && <span className="px-1 text-gray-400">...</span>}
+                      </>
+                    )}
+
+                    {/* 前のページ */}
+                    {page > 1 && (
+                      <button
+                        onClick={() => handlePageChange(page - 1)}
+                        disabled={isNavigating}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        type="button"
+                      >
+                        {page - 1}
+                      </button>
+                    )}
+
+                    {/* 現在のページ */}
+                    <span className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">
+                      {page}
+                    </span>
+
+                    {/* 次のページ */}
+                    {page < totalPages && (
+                      <button
+                        onClick={() => handlePageChange(page + 1)}
+                        disabled={isNavigating}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        type="button"
+                      >
+                        {page + 1}
+                      </button>
+                    )}
+
+                    {/* 最後のページ */}
+                    {page < totalPages - 1 && (
+                      <>
+                        {page < totalPages - 2 && <span className="px-1 text-gray-400">...</span>}
+                        <button
+                          onClick={() => handlePageChange(totalPages)}
+                          disabled={isNavigating}
+                          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          type="button"
+                        >
+                          {totalPages}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page >= totalPages || isNavigating}
+                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                    type="button"
+                  >
+                    次へ
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-16">
               <svg className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

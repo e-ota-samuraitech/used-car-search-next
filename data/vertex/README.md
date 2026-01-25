@@ -54,6 +54,7 @@
 | `updatedAtIso` | string | ISO8601形式の更新日時 |
 | `imageMain` | string | メイン画像URL |
 | `raw.carsensor` | object | カーセンサーAPIからの生データ（将来用） |
+| `priceChanged` | boolean | 価格変動フラグ（prevPriceYen !== priceYen） |
 
 ## 生成スクリプト
 
@@ -114,3 +115,60 @@ gsutil cp data/vertex/cars_dummy.discoveryengine.jsonl gs://<YOUR_BUCKET>/vertex
 1. このダミーデータをVertex AI Searchに投入
 2. `SearchClient` を Vertex AI Search 用に差し替え
 3. UIには変更なしで動作確認
+
+## priceChanged 再インデックス手順
+
+`priceChanged` フィールドは絞り込みフィルタで使用する派生フィールドです。
+変換スクリプトで自動的に計算されます。
+
+### 手順
+
+1. **JSONL 再生成**（変換スクリプトを実行）
+
+```bash
+# ダミーデータを再生成（必要な場合のみ）
+npx tsx tools/generate-dummy-data.ts
+
+# Discovery Engine 用に変換（priceChanged が追加される）
+npx tsx tools/convert-for-discovery-engine.ts
+```
+
+2. **GCS にアップロード**
+
+```bash
+gsutil cp data/vertex/cars_dummy.discoveryengine.jsonl gs://<YOUR_BUCKET>/vertex/cars_dummy.discoveryengine.jsonl
+```
+
+3. **Data Store に再インポート**
+
+Google Cloud Console または gcloud CLI で Data Store のインポートを実行:
+
+```bash
+# gcloud CLI の場合（プロジェクト/データストアIDは環境に合わせる）
+gcloud alpha discovery-engine data-stores import documents \
+  --project=<PROJECT_ID> \
+  --location=global \
+  --data-store=<DATA_STORE_ID> \
+  --gcs-uri=gs://<YOUR_BUCKET>/vertex/cars_dummy.discoveryengine.jsonl \
+  --id-field=id
+```
+
+### priceChanged フィールドの計算ロジック
+
+```typescript
+const priceChanged = prevPriceYen !== priceYen;
+```
+
+- `true`: 価格が変動した（値下げ or 値上げ）
+- `false`: 価格変動なし
+
+### フィルタでの使用
+
+Vertex AI Search filter で以下のように使用:
+
+```
+priceChanged = true
+```
+
+**注意**: Vertex の filter 構文が `= true` と `= 1` のどちらを受け付けるかは環境依存の可能性があります。
+現在のコードは `priceChanged = true` を使用しています。
