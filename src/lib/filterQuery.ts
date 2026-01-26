@@ -73,7 +73,37 @@ export function parseFilterQuery(
 
   // Note: pc/priceChangedOnly params are now ignored (feature removed)
 
-  return { makers, features, pref, city, min, max };
+  // /cars/* の構造URL（例: /cars/m-toyota/）からもフィルタを推定して状態を引き継ぐ。
+  // 重要: 明示的なクエリ（maker/feat/pref/city）がある場合はそちらを優先。
+  const segmentsRaw = query.segments;
+  const segments = Array.isArray(segmentsRaw)
+    ? segmentsRaw
+    : typeof segmentsRaw === 'string'
+      ? [segmentsRaw]
+      : [];
+
+  let inferredMaker: string | undefined;
+  let inferredPref: string | undefined;
+  let inferredCity: string | undefined;
+  let inferredFeature: string | undefined;
+
+  for (const seg of segments) {
+    if (typeof seg !== 'string') continue;
+    const s = seg.trim().toLowerCase();
+    if (s.startsWith('m-') && s.length > 2) inferredMaker = s.slice(2);
+    if (s.startsWith('p-') && s.length > 2) inferredPref = s.slice(2);
+    if (s.startsWith('c-') && s.length > 2) inferredCity = s.slice(2);
+    if (s.startsWith('f-') && s.length > 2) inferredFeature = s.slice(2);
+  }
+
+  return {
+    makers: makers.length > 0 ? makers : inferredMaker ? [inferredMaker] : [],
+    features: features.length > 0 ? features : inferredFeature ? [inferredFeature] : [],
+    pref: pref || inferredPref || '',
+    city: city || inferredCity || '',
+    min,
+    max,
+  };
 }
 
 /**
