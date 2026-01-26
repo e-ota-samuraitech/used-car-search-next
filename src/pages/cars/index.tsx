@@ -5,6 +5,7 @@
 
 import { GetServerSideProps } from 'next';
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '@/components/common/Layout';
 import { SeoHead } from '@/components/seo/SeoHead';
 import ResultsList from '@/components/results/ResultsList';
@@ -13,7 +14,7 @@ import ResultsShell from '@/components/results/ResultsShell';
 import CampaignSidebar from '@/components/results/CampaignSidebar';
 import type { Car } from '@/types';
 import type { SeoResult } from '@/lib/seo';
-import { evaluateSeo, getBaseUrl } from '@/lib/seo';
+import { evaluateSeo, getBaseUrl, normalizeQueryValue } from '@/lib/seo';
 import { executeSearchFromParsedUrl } from '@/lib/search';
 
 function shouldEmitSeoDebugHeaders(): boolean {
@@ -44,6 +45,10 @@ interface CarsTopPageProps {
 
   /** 総件数 */
   totalCount: number;
+
+  /** ページネーション */
+  page: number;
+  pageSize: number;
 }
 
 // ============================================
@@ -52,6 +57,10 @@ interface CarsTopPageProps {
 
 export const getServerSideProps: GetServerSideProps<CarsTopPageProps> = async (context) => {
   const { req, res, query } = context;
+
+  const PAGE_SIZE = 20;
+  const pageRaw = parseInt(normalizeQueryValue(query.page).trim(), 10);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
   // 現在のパスとクエリ
   const pathname = '/cars/';
@@ -62,6 +71,7 @@ export const getServerSideProps: GetServerSideProps<CarsTopPageProps> = async (c
     const searchResult = await executeSearchFromParsedUrl({
       type: 'cars-top',
       query,
+      page,
     });
 
     // 2. SEO評価を実行
@@ -89,6 +99,8 @@ export const getServerSideProps: GetServerSideProps<CarsTopPageProps> = async (c
         seo: seoResult,
         cars: searchResult.items,
         totalCount: searchResult.totalCount,
+        page,
+        pageSize: PAGE_SIZE,
       },
     };
   } catch (error) {
@@ -113,6 +125,8 @@ export const getServerSideProps: GetServerSideProps<CarsTopPageProps> = async (c
         seo: fallbackSeo,
         cars: [],
         totalCount: 0,
+        page: 1,
+        pageSize: 20,
       },
     };
   }
@@ -122,8 +136,24 @@ export const getServerSideProps: GetServerSideProps<CarsTopPageProps> = async (c
 // ページコンポーネント
 // ============================================
 
-export default function CarsTopPage({ seo, cars, totalCount }: CarsTopPageProps) {
+export default function CarsTopPage({ seo, cars, totalCount, page, pageSize }: CarsTopPageProps) {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const router = useRouter();
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+
+    const newQuery: Record<string, any> = { ...router.query };
+    if (newPage <= 1) {
+      delete newQuery.page;
+    } else {
+      newQuery.page = String(newPage);
+    }
+
+    router.push({ pathname: router.pathname, query: newQuery }, undefined, { scroll: true });
+  };
 
   return (
     <>
@@ -161,10 +191,83 @@ export default function CarsTopPage({ seo, cars, totalCount }: CarsTopPageProps)
         >
           {/* 結果件数 */}
           <div className="text-xs md:text-sm text-gray-600 mb-4">
-            約 {totalCount} 件の結果
+            約 {totalCount} 件の結果（{page} / {totalPages} ページ）
           </div>
 
           <ResultsList results={cars} cardVariant="vertical" />
+
+          {/* ページャ */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8 mb-4">
+              <button
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page <= 1}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                type="button"
+              >
+                前へ
+              </button>
+
+              <div className="flex items-center gap-1">
+                {page > 2 && (
+                  <>
+                    <button
+                      onClick={() => handlePageChange(1)}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      type="button"
+                    >
+                      1
+                    </button>
+                    {page > 3 && <span className="px-1 text-gray-400">...</span>}
+                  </>
+                )}
+
+                {page > 1 && (
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    type="button"
+                  >
+                    {page - 1}
+                  </button>
+                )}
+
+                <span className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">{page}</span>
+
+                {page < totalPages && (
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    type="button"
+                  >
+                    {page + 1}
+                  </button>
+                )}
+
+                {page < totalPages - 1 && (
+                  <>
+                    {page < totalPages - 2 && <span className="px-1 text-gray-400">...</span>}
+                    <button
+                      onClick={() => handlePageChange(totalPages)}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      type="button"
+                    >
+                      {totalPages}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page >= totalPages}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                type="button"
+              >
+                次へ
+              </button>
+            </div>
+          )}
         </ResultsShell>
       </Layout>
     </>

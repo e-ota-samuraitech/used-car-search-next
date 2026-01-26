@@ -13,6 +13,7 @@
 
 import { GetServerSideProps } from 'next';
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '@/components/common/Layout';
 import { SeoHead } from '@/components/seo/SeoHead';
 import ResultsList from '@/components/results/ResultsList';
@@ -29,6 +30,7 @@ import {
   buildCanonicalPath,
   buildAbsoluteUrl,
   isValidSlug,
+  normalizeQueryValue,
 } from '@/lib/seo';
 import { executeSearchFromParsedUrl } from '@/lib/search';
 import { getSearchClient } from '@/server/search/searchClient';
@@ -61,6 +63,10 @@ interface CatchAllCarsPageProps {
   car?: Car | null;
   featureContent?: FeatureContent | null;
   facets: Facet[];
+
+  /** ページネーション */
+  page: number;
+  pageSize: number;
 }
 
 type SegmentsParam = string[] | string | undefined;
@@ -145,6 +151,10 @@ function isValidCarsSegments(segments: string[]): boolean {
 export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = async (context) => {
   const { req, res, query, params } = context;
 
+  const PAGE_SIZE = 20;
+  const pageRaw = parseInt(normalizeQueryValue(query.page).trim(), 10);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+
   const segments = asArray(params?.segments as SegmentsParam);
 
   if (!isValidCarsSegments(segments)) {
@@ -156,6 +166,9 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
 
   try {
     const parsed: ParsedUrl = parseUrl(pathname, query);
+
+    // /cars/* でも /results と同じく常にページングする（page=1を明示して SearchClient 側の paging を有効化）
+    const parsedWithPaging: ParsedUrl = { ...parsed, page };
 
     // 正規URLへ集約（可能なら301/308で寄せる）
     const canonicalPath = buildCanonicalPath(parsed);
@@ -250,11 +263,13 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
           pathname,
           car,
           facets: [],
+          page,
+          pageSize: PAGE_SIZE,
         },
       };
     }
 
-    const searchResult = await executeSearchFromParsedUrl(parsed);
+    const searchResult = await executeSearchFromParsedUrl(parsedWithPaging);
 
     const featureContent =
       parsed.type === 'feature' || parsed.type === 'pref-feature'
@@ -288,6 +303,8 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
         car: null,
         featureContent,
         facets: searchResult.facets,
+        page,
+        pageSize: PAGE_SIZE,
       },
     };
   } catch (error) {
@@ -298,8 +315,24 @@ export const getServerSideProps: GetServerSideProps<CatchAllCarsPageProps> = asy
   }
 };
 
-export default function CatchAllCarsPage({ seo, cars, totalCount, car, featureContent, facets }: CatchAllCarsPageProps) {
+export default function CatchAllCarsPage({ seo, cars, totalCount, car, featureContent, facets, page, pageSize }: CatchAllCarsPageProps) {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const router = useRouter();
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+
+    const newQuery: Record<string, any> = { ...router.query };
+    if (newPage <= 1) {
+      delete newQuery.page;
+    } else {
+      newQuery.page = String(newPage);
+    }
+
+    router.push({ pathname: router.pathname, query: newQuery }, undefined, { scroll: true });
+  };
 
   // 車両詳細ページ（detail分岐）は現状維持
   if (seo.urlType === 'detail') {
@@ -358,11 +391,86 @@ export default function CatchAllCarsPage({ seo, cars, totalCount, car, featureCo
         >
           {/* 結果件数 */}
           <div className="text-xs md:text-sm text-gray-600 mb-4">
-            約 {totalCount} 件の結果
+            約 {totalCount} 件の結果（{page} / {totalPages} ページ）
           </div>
 
           {cars.length > 0 ? (
-            <ResultsList results={cars} cardVariant="vertical" />
+            <>
+              <ResultsList results={cars} cardVariant="vertical" />
+
+              {/* ページャ */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8 mb-4">
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page <= 1}
+                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                    type="button"
+                  >
+                    前へ
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {page > 2 && (
+                      <>
+                        <button
+                          onClick={() => handlePageChange(1)}
+                          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          type="button"
+                        >
+                          1
+                        </button>
+                        {page > 3 && <span className="px-1 text-gray-400">...</span>}
+                      </>
+                    )}
+
+                    {page > 1 && (
+                      <button
+                        onClick={() => handlePageChange(page - 1)}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        type="button"
+                      >
+                        {page - 1}
+                      </button>
+                    )}
+
+                    <span className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">{page}</span>
+
+                    {page < totalPages && (
+                      <button
+                        onClick={() => handlePageChange(page + 1)}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        type="button"
+                      >
+                        {page + 1}
+                      </button>
+                    )}
+
+                    {page < totalPages - 1 && (
+                      <>
+                        {page < totalPages - 2 && <span className="px-1 text-gray-400">...</span>}
+                        <button
+                          onClick={() => handlePageChange(totalPages)}
+                          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          type="button"
+                        >
+                          {totalPages}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page >= totalPages}
+                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                    type="button"
+                  >
+                    次へ
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-16">
               <svg className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
