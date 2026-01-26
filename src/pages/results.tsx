@@ -50,10 +50,15 @@ export const getServerSideProps: GetServerSideProps<ResultsPageProps> = async (c
   //    重要: filters が付いている場合は /results に留める（UX用URL）。
   const hasFilters =
     !!normalizeQueryValue(urlQuery.maker).trim() ||
+    // new multi-select feature key
+    toStringArray((urlQuery as any).feat).length > 0 ||
     !!normalizeQueryValue(urlQuery.model).trim() ||
     !!normalizeQueryValue(urlQuery.pref).trim() ||
     !!normalizeQueryValue(urlQuery.city).trim() ||
     !!normalizeQueryValue(urlQuery.feature).trim() ||
+    // new min/max keys
+    !!normalizeQueryValue((urlQuery as any).min).trim() ||
+    !!normalizeQueryValue((urlQuery as any).max).trim() ||
     !!normalizeQueryValue(urlQuery.minMan).trim() ||
     !!normalizeQueryValue(urlQuery.maxMan).trim();
 

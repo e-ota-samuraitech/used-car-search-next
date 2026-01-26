@@ -29,7 +29,7 @@ function buildAnyFilter(field: string, values: string[]): string | null {
  *
  * フィルタ形式:
  * - maker/model/pref/city: `${field}Slug: ANY("value")`
- * - feature: `featureSlugs: ANY("value1","value2")`（複数OR）
+ * - feature: `featureSlugs: ANY("value")` を複数 `AND` で連結（複数AND）
  * - price: `priceYen: IN(minYen, maxYen)`
  *
  * @returns filter 文字列。条件がなければ undefined
@@ -72,9 +72,22 @@ export function buildFilter(query: SearchQuery): string | undefined {
 
   // featureSlugs（複数対応：featureSlugs 優先、なければ featureSlug）
   const featureValues = query.featureSlugs?.length ? query.featureSlugs : query.featureSlug ? [query.featureSlug] : [];
-  const featureFilter = buildAnyFilter('featureSlugs', featureValues);
-  if (featureFilter) {
-    conditions.push(featureFilter);
+  // NOTE: feature は「全部含む（AND）」が自然なので、複数指定時は ANY を AND で連結する。
+  // 例: feat=a&feat=b -> featureSlugs: ANY("a") AND featureSlugs: ANY("b")
+  const featureValuesNormalized = Array.from(
+    new Set(
+      featureValues
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0),
+    ),
+  );
+  if (featureValuesNormalized.length === 1) {
+    const single = buildAnyFilter('featureSlugs', featureValuesNormalized);
+    if (single) conditions.push(single);
+  } else if (featureValuesNormalized.length > 1) {
+    for (const v of featureValuesNormalized) {
+      conditions.push(`featureSlugs: ANY("${escapeSlug(v)}")`);
+    }
   }
 
   // 価格レンジ（万円 → 円変換）
