@@ -16,31 +16,6 @@ const QUICK_LINKS = [
   { label: 'スバル', href: '/cars/m-subaru/' },
 ];
 
-// キャンペーンデータ（静的ダミー）
-const CAMPAIGNS = [
-  {
-    id: '1',
-    dealer: 'カーセンター東京',
-    title: '新春セール開催中！',
-    description: '全車両10万円値引き',
-    endDate: '2025年1月31日まで',
-  },
-  {
-    id: '2',
-    dealer: 'マツダオート大阪',
-    title: '決算セール実施中',
-    description: 'SUV特別価格',
-    endDate: '2025年3月31日まで',
-  },
-  {
-    id: '3',
-    dealer: 'トヨタ福岡中央',
-    title: '春の大感謝祭',
-    description: 'ミニバン限定キャンペーン',
-    endDate: '2025年4月30日まで',
-  },
-];
-
 export default function TopPage() {
   const router = useRouter();
   const { setQuery, filters } = useApp();
@@ -133,8 +108,8 @@ export default function TopPage() {
         </Link>
       </header>
 
-      {/* Main Content (readdy準拠: -mt で中央寄せ) */}
-      <main className="relative z-0 flex-1 flex flex-col items-center justify-center px-4 md:px-6 -mt-10 md:-mt-20">
+      {/* Main Content */}
+      <main className="relative z-0 flex-1 flex flex-col items-center justify-center px-4 md:px-6">
         <div className="w-full max-w-2xl">
           {/* Logo + Title */}
           <div className="text-center mb-6 md:mb-8">
@@ -212,54 +187,18 @@ export default function TopPage() {
               </Link>
             ))}
           </div>
-        </div>
-      </main>
 
-      {/* Campaign Section */}
-      <section className="px-4 md:px-6 py-8 md:py-12 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          {/* Section Title */}
-          <h2 className="text-lg md:text-xl font-medium text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
-            <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 23c-1.1 0-1.99-.89-1.99-1.99h3.98c0 1.1-.89 1.99-1.99 1.99zm7-2.01H5v-2l1-1v-5.8c0-3.25 1.82-5.95 5-6.67V4c0-.83.67-1.5 1.5-1.5S14 3.17 14 4v.52c3.18.72 5 3.42 5 6.68v5.8l1 1v2z"/>
-            </svg>
-            今、何が起きているか
-          </h2>
-
-          {/* Campaign Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            {CAMPAIGNS.map((campaign) => (
-              <Link
-                key={campaign.id}
-                href="/campaigns"
-                className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 block"
-              >
-                {/* Image Placeholder */}
-                <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-400 text-sm">キャンペーン画像</span>
-                </div>
-                {/* Content */}
-                <div className="p-4 md:p-5">
-                  <div className="text-xs text-gray-500 mb-2">{campaign.dealer}</div>
-                  <h3 className="font-medium text-gray-800 mb-2">{campaign.title}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{campaign.description}</p>
-                  <div className="text-xs text-red-600 font-medium">{campaign.endDate}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {/* View All Button */}
-          <div className="text-center mt-6 md:mt-8">
+          {/* Campaigns Link */}
+          <div className="mt-6 text-center">
             <Link
               href="/campaigns"
-              className="inline-block px-6 py-3 bg-white border border-gray-300 text-sm text-gray-700 rounded hover:bg-gray-50 transition-colors whitespace-nowrap cursor-pointer"
+              className="text-xs md:text-sm text-gray-500 hover:text-gray-700 hover:underline"
             >
-              すべてのキャンペーンを見る
+              キャンペーン情報を見る
             </Link>
           </div>
         </div>
-      </section>
+      </main>
 
       {/* Footer */}
       <Footer />

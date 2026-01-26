@@ -20,6 +20,7 @@ import {
   EMPTY_FILTER_STATE,
 } from '@/lib/filterQuery';
 import { getFeatureLabel, FEATURE_LABELS } from '@/lib/featureMaster';
+import { getPrefName } from '@/lib/geo/prefMaster';
 import { useGeoFilters } from '@/hooks/useGeoFilters';
 
 // ============================================
@@ -43,6 +44,12 @@ function getMakerLabel(slug: string, makers: Array<{ slug: string; name: string 
 }
 
 function getPrefLabel(slug: string, prefs: Array<{ slug: string; name: string }>): string {
+  // まず静的マスターを参照（47都道府県確実に日本語化）
+  const fromMaster = getPrefName(slug);
+  if (fromMaster !== slug) {
+    return fromMaster;
+  }
+  // フォールバック: useGeoFilters のデータ
   const found = prefs.find((p) => p.slug === slug);
   return found?.name ?? slug;
 }

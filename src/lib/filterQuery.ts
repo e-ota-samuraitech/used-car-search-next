@@ -163,9 +163,22 @@ export function buildFilterQueryParams(options: BuildQueryOptions): URLSearchPar
 }
 
 /**
+ * /cars/* dynamic route かどうかを判定
+ * - router.pathname が [... を含む場合（テンプレート）
+ * - router.asPath が /cars/ で始まる場合
+ */
+function isCarsDynamicRoute(router: NextRouter): boolean {
+  return (
+    router.pathname.includes('[...') ||
+    router.asPath.startsWith('/cars/')
+  );
+}
+
+/**
  * フィルタ更新時にURLを更新（page=1にリセット）
  *
- * /cars/* でも /results でもパスを維持しクエリのみ更新
+ * /cars/* の場合は /results にフォールバック（SEO正規URLを維持するため）
+ * /results の場合はそのまま /results
  */
 export function pushFilterUpdate(
   router: NextRouter,
@@ -179,14 +192,19 @@ export function pushFilterUpdate(
     sort: options?.sort,
   });
 
+  // /cars/* は SEO着地用なので、フィルタ操作は /results にフォールバック
+  const basePath = isCarsDynamicRoute(router) ? '/results' : '/results';
+
   const qs = params.toString();
-  const url = qs ? `${router.pathname}?${qs}` : router.pathname;
+  const url = qs ? `${basePath}?${qs}` : basePath;
 
   router.push(url, undefined, { scroll: true });
 }
 
 /**
  * ページ移動時にURLを更新（フィルタは維持）
+ *
+ * /cars/* の場合は /results にフォールバック
  */
 export function pushPageChange(
   router: NextRouter,
@@ -201,8 +219,11 @@ export function pushPageChange(
     sort: options?.sort,
   });
 
+  // /cars/* は SEO着地用なので、ページ操作は /results にフォールバック
+  const basePath = isCarsDynamicRoute(router) ? '/results' : '/results';
+
   const qs = params.toString();
-  const url = qs ? `${router.pathname}?${qs}` : router.pathname;
+  const url = qs ? `${basePath}?${qs}` : basePath;
 
   router.push(url, undefined, { scroll: true });
 }

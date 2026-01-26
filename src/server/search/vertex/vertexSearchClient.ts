@@ -188,6 +188,23 @@ function buildStrictFilter(existingFilter: string | undefined, modelName: string
 }
 
 /**
+ * 構造化フィルタ（maker/pref/city/feature/price等）が付いているか判定
+ */
+function hasStructuralFilter(query: SearchQuery): boolean {
+  return !!(
+    query.makerSlug ||
+    query.makerSlugs?.length ||
+    query.modelSlug ||
+    query.prefSlug ||
+    query.citySlug ||
+    query.featureSlug ||
+    query.featureSlugs?.length ||
+    query.minMan ||
+    query.maxMan
+  );
+}
+
+/**
  * facets デバッグログを出力するか
  * - DEBUG_VERTEX_FACETS=1|true で有効
  * - 本番でも明示的にONなら出る（ただし facets 要約のみ）
@@ -343,7 +360,12 @@ export class VertexSearchClient implements SearchClient {
 
     // strict 検索の判定
     const strictEnabled = isStrictModelMatchEnabled();
-    const shouldTryStrict = strictEnabled && q.length > 0 && isModelLikeQuery(q);
+    const isModelLike = q.length > 0 && isModelLikeQuery(q);
+    const hasStructFilter = hasStructuralFilter(query);
+
+    // モデル名っぽい & 構造フィルタあり → AND保証のため強制 strict（0件でもフォールバックしない）
+    const forceStrictForAnd = isModelLike && hasStructFilter;
+    const shouldTryStrict = (strictEnabled && isModelLike) || forceStrictForAnd;
     const strictFilter = shouldTryStrict ? buildStrictFilter(filter, q) : undefined;
 
     if (shouldLogDebug()) {
@@ -358,6 +380,9 @@ export class VertexSearchClient implements SearchClient {
         queryExpansionCondition: queryExpansionCondition ?? '(none)',
         spellCorrectionMode: spellCorrectionMode ?? '(none)',
         strictEnabled,
+        isModelLike,
+        hasStructFilter,
+        forceStrictForAnd,
         shouldTryStrict,
         strictFilter: strictFilter ?? '(none)',
       });
@@ -411,6 +436,14 @@ export class VertexSearchClient implements SearchClient {
               console.log('[VertexSearchClient] strict search succeeded:', {
                 resultsCount: strictResults.length,
               });
+            }
+          } else if (forceStrictForAnd) {
+            // AND保証のため強制 strict の場合: 0件でもフォールバックしない
+            results = strictResults;
+            response = strictResponse;
+            usedStrictSearch = true;
+            if (shouldLogDebug()) {
+              console.log('[VertexSearchClient] strict search returned 0 results, but forceStrictForAnd=true, not falling back');
             }
           } else {
             // 0件なら通常検索にフォールバック
